@@ -1,0 +1,25 @@
+spring.application.name=financial-manager-dashboard
+
+# Cambiamo porta per evitare conflitti
+server.port=8081
+
+# Configurazione Database (usa un DB diverso, es. postgres_dashboard)
+spring.datasource.url=jdbc:postgresql://localhost:5432/db_dashboard
+spring.datasource.username=tuo_user
+spring.datasource.password=tua_pass
+
+# Abilitiamo Java 21 Virtual Threads
+spring.threads.virtual.enabled=true
+
+# --- KAFKA CONSUMER CONFIG ---
+spring.kafka.bootstrap-servers=localhost:9092
+# Identificativo univoco di questo servizio
+spring.kafka.consumer.group-id=dashboard-group
+# Da dove iniziare a leggere se e un nuovo consumer (earliest = dall'inizio del log)
+spring.kafka.consumer.auto-offset-reset=earliest
+
+# Deserializzazione (da Byte a Oggetti)
+spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer
+# Diamo il permesso di ricostruire le classi in questo package
+spring.kafka.consumer.properties.spring.json.trusted.packages=com.example.dashboardservice.dto
