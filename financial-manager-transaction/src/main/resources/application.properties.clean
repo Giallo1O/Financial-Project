@@ -1,0 +1,15 @@
+spring.application.name=financial-manager
+
+spring.threads.virtual.enabled=true
+
+# Indirizzo del server Kafka (nel tuo caso sara l'IP del servizio su K8s)
+spring.datasource.url=jdbc:postgresql://localhost:5432/db_transactions
+spring.kafka.bootstrap-servers=localhost:9092
+
+# Serializzazione: Kafka capisce solo byte. 
+# Dobbiamo dirgli come trasformare la Chiave e il Valore del messaggio.
+spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer
+
+# Opzionale: aggiunge informazioni sul tipo di oggetto nel messaggio JSON
+spring.kafka.producer.properties.spring.json.add.type.headers=false
