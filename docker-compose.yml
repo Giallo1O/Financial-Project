@@ -1,0 +1,161 @@
+services:
+  # --- INFRASTRUTTURA ---
+  postgres-transactions:
+    image: postgres:16
+    container_name: pg-trans
+    environment:
+      POSTGRES_DB: db_transactions
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_trans_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d db_transactions"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-dashboard:
+    image: postgres:16
+    container_name: pg-dash
+    environment:
+      POSTGRES_DB: db_dashboard
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_dash_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d db_dashboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-users:
+    image: postgres:16
+    container_name: pg-users
+    environment:
+      POSTGRES_DB: db_users
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - pg_users_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d db_users"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka-broker
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJDRDRCOEY"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    depends_on:
+      - kafka
+
+  # --- MICROSERVIZI ---
+  transaction-service:
+    build: ./financial-manager-transaction
+    container_name: transaction-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pg-trans:5432/db_transactions
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      postgres-transactions:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  dashboard-service:
+    build: ./financial-manager-dashboard
+    container_name: dashboard-app
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pg-dash:5432/db_dashboard
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      postgres-dashboard:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  user-service:
+    build: ./financial-manager-user
+    container_name: user-app
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pg-users:5432/db_users
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+
+  frontend-service:
+    build:
+      context: ./financial-manager-frontend
+      args:
+        # Since the browser accesses the backend directly from the host machine,
+        # we configure frontend to point to the exposed localhost ports.
+        - VITE_DASHBOARD_API_URL=http://localhost:8081
+        - VITE_TRANSACTION_API_URL=http://localhost:8080
+        - VITE_USER_API_URL=http://localhost:8082
+    container_name: frontend-react-app
+    ports:
+      - "3000:80"
+    depends_on:
+      - transaction-service
+      - dashboard-service
+      - user-service
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres-transactions
+      - postgres-dashboard
+      - postgres-users
+
+volumes:
+  pg_trans_data:
+  pg_dash_data:
+  pg_users_data:
