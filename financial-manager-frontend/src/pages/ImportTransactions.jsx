@@ -1,66 +1,97 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Upload, 
+  FileText, 
+  CheckCircle2, 
+  ChevronRight, 
+  Trash2, 
+  AlertCircle,
+  ArrowRight,
+  PieChart,
+  List
+} from 'lucide-react';
+import { fetchCategories, parseCsv, bulkImportTransactions } from '../api';
+import './ImportTransactions.css';
+
+const STEPS = [
+  { id: 1, label: 'Upload', icon: Upload },
+  { id: 2, label: 'Review', icon: List },
+  { id: 3, label: 'Confirm', icon: CheckCircle2 },
+];
 
 const ImportTransactions = () => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [file, setFile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchCategories();
+    loadCategories();
   }, []);
 
-  const fetchCategories = async () => {
+  const loadCategories = async () => {
     try {
-      const token = localStorage.getItem('token');
-      // For simplicity, hardcoded default user if no token decoded. In real app use decoded token userId.
-      const userId = 'default-user'; 
-      const res = await fetch(`http://localhost:8081/api/categories/user/${userId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
-      }
+      const data = await fetchCategories();
+      setCategories(data);
     } catch (error) {
       console.error('Failed to load categories', error);
     }
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files[0];
+    if (selectedFile && selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
+      setFile(selectedFile);
+      setMessage({ text: '', type: '' });
+    } else if (selectedFile) {
+      setMessage({ text: 'Please select a valid CSV file.', type: 'error' });
     }
   };
 
-  const handleUpload = async () => {
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
+      setFile(droppedFile);
+      setMessage({ text: '', type: '' });
+    } else {
+      setMessage({ text: 'Please drop a valid CSV file.', type: 'error' });
+    }
+  };
+
+  const handleUploadAndParse = async () => {
     if (!file) return;
 
     setIsLoading(true);
-    setMessage('');
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    
     try {
-      const res = await fetch('http://localhost:8081/api/transactions/parse-csv', {
-        method: 'POST',
-        // Optional auth if implemented: headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: formData
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setTransactions(data.map(t => ({...t, tempId: crypto.randomUUID()}))); // Add tempId to track edits easily
-      } else {
-        setMessage('Failed to parse CSV');
-      }
+      const data = await parseCsv(file);
+      setTransactions(data.map(t => ({
+        ...t, 
+        tempId: crypto.randomUUID(),
+        type: t.type || 'USCITA'
+      })));
+      setCurrentStep(2);
+      setMessage({ text: '', type: '' });
     } catch (error) {
       console.error('Upload Error:', error);
-      setMessage('Error connecting to server');
+      setMessage({ text: 'Failed to parse CSV. Check the file format.', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -76,31 +107,32 @@ const ImportTransactions = () => {
     setTransactions(prev => prev.filter(t => t.tempId !== tempId));
   };
 
-  const handleConfirm = async () => {
+  const handleNextToConfirm = () => {
+    if (transactions.length === 0) {
+      setMessage({ text: 'No transactions to import.', type: 'error' });
+      return;
+    }
+    setCurrentStep(3);
+  };
+
+  const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      // Remove tempId before sending to backend
-      const payload = transactions.map(({ tempId, ...rest }) => rest);
+      const payload = transactions.map(({ tempId, ...rest }) => ({
+        ...rest,
+        type: rest.type.toUpperCase()
+      }));
       
-      const res = await fetch('http://localhost:8081/api/transactions/bulk-import', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const res = await bulkImportTransactions(payload);
 
       if (res.ok) {
-        setMessage('Transactions imported successfully!');
-        setTransactions([]);
-        setFile(null);
-        setTimeout(() => navigate('/transactions'), 2000); // Redirect after success
+        setMessage({ text: 'Success! Transactions imported.', type: 'success' });
+        setTimeout(() => navigate('/transactions'), 1500);
       } else {
-        setMessage('Failed to import transactions');
+        setMessage({ text: 'Import failed. Please try again.', type: 'error' });
       }
     } catch (error) {
-      setMessage('Network error during import');
+      setMessage({ text: 'Network error during import.', type: 'error' });
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -108,90 +140,207 @@ const ImportTransactions = () => {
   };
 
   return (
-    <div className="page-container">
-      <h2>Import Transactions via CSV</h2>
-      
-      <div className="upload-container" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '2rem' }}>
-        <input type="file" accept=".csv" onChange={handleFileChange} className="form-input" />
-        <button onClick={handleUpload} disabled={!file || isLoading} className="btn-primary">
-          {isLoading ? 'Parsing...' : 'Upload & Parse'}
-        </button>
-      </div>
+    <div className="main-content fade-in">
+      <div className="import-wizard">
+        <div className="header-section">
+          <h1 className="text-gradient">Import Transactions</h1>
+          <p className="text-muted">Effortlessly bulk-upload your data using CSV files</p>
+        </div>
 
-      {message && <div style={{ marginBottom: '1rem', color: message.includes('success') ? 'green' : 'red' }}>{message}</div>}
+        {/* Stepper indicator */}
+        <div className="stepper-header">
+          {STEPS.map((step) => {
+            const Icon = step.icon;
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            return (
+              <div key={step.id} className={`step-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                <div className="step-badge">
+                  {isCompleted ? <CheckCircle2 size={18} /> : <Icon size={18} />}
+                </div>
+                <span className="step-label">{step.label}</span>
+              </div>
+            );
+          })}
+        </div>
 
-      {transactions.length > 0 && (
-        <div className="import-preview">
-          <h3>Preview & Edit Parsed Data</h3>
-          <table className="transactions-table">
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th>Amount</th>
-                <th>Type</th>
-                <th>Category (Optional)</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map(t => (
-                <tr key={t.tempId}>
-                  <td>
-                    <input 
-                      type="text" 
-                      value={t.description} 
-                      onChange={(e) => handleRowChange(t.tempId, 'description', e.target.value)} 
-                      className="form-input"
-                    />
-                  </td>
-                  <td>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      value={t.amount} 
-                      onChange={(e) => handleRowChange(t.tempId, 'amount', e.target.value)} 
-                      className="form-input"
-                    />
-                  </td>
-                  <td>
-                    <select 
-                      value={t.type} 
-                      onChange={(e) => handleRowChange(t.tempId, 'type', e.target.value)}
-                      className="form-select"
-                    >
-                      <option value="EXPENSE">Expense</option>
-                      <option value="INCOME">Income</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select 
-                      value={t.categoryId || ''} 
-                      onChange={(e) => handleRowChange(t.tempId, 'categoryId', e.target.value)}
-                      className="form-select"
-                    >
-                      <option value="">-- None --</option>
-                      {categories.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <button onClick={() => handleRemoveRow(t.tempId)} className="btn-alert" style={{ padding: '0.25rem 0.5rem' }}>
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {message.text && (
+          <div className={`glass-panel fade-in`} style={{ 
+            padding: '1rem', 
+            marginBottom: '1.5rem', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.75rem',
+            borderColor: message.type === 'error' ? 'var(--danger)' : 'var(--success)',
+            background: message.type === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)'
+          }}>
+            {message.type === 'error' ? <AlertCircle size={20} color="var(--danger)" /> : <CheckCircle2 size={20} color="var(--success)" />}
+            <span style={{ color: message.type === 'error' ? 'var(--danger)' : 'var(--success)' }}>{message.text}</span>
+          </div>
+        )}
 
-          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={handleConfirm} disabled={isLoading} className="btn-success" style={{ padding: '0.75rem 2rem', fontSize: '1.1rem' }}>
-              {isLoading ? 'Saving...' : 'Confirm & Save All'}
+        {/* Step 1: Upload */}
+        {currentStep === 1 && (
+          <div className="glass-panel dropzone-container fade-in"
+               onDragOver={onDragOver}
+               onDragLeave={onDragLeave}
+               onDrop={onDrop}
+               onClick={() => fileInputRef.current.click()}>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept=".csv" 
+              onChange={handleFileChange} 
+            />
+            <div className="upload-icon">
+              <Upload size={64} strokeWidth={1.5} />
+            </div>
+            <div>
+              <h3>{file ? file.name : 'Click or drag CSV file here'}</h3>
+              <p className="text-muted">Maximum file size: 5MB</p>
+            </div>
+            
+            {file && (
+              <div className="file-info">
+                <FileText size={16} />
+                <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+              </div>
+            )}
+
+            <button 
+              className="btn btn-primary" 
+              disabled={!file || isLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleUploadAndParse();
+              }}
+              style={{ marginTop: '1rem', padding: '0.75rem 3rem' }}
+            >
+              {isLoading ? 'Processing...' : 'Analyze Data'}
+              {!isLoading && <ChevronRight size={18} />}
             </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Step 2: Review */}
+        {currentStep === 2 && (
+          <div className="fade-in">
+            <div className="preview-actions">
+              <h3>Verify & Polish ({transactions.length} rows)</h3>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="btn btn-glass" onClick={() => setCurrentStep(1)}>
+                  Back
+                </button>
+                <button className="btn btn-primary" onClick={handleNextToConfirm}>
+                  Next Step <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="glass-panel scrolltable-container">
+              <table className="import-preview-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style={{ width: '120px' }}>Amount</th>
+                    <th style={{ width: '130px' }}>Type</th>
+                    <th style={{ width: '180px' }}>Category</th>
+                    <th style={{ width: '50px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map(t => (
+                    <tr key={t.tempId}>
+                      <td>
+                        <input 
+                          type="text" 
+                          value={t.description || ''} 
+                          onChange={(e) => handleRowChange(t.tempId, 'description', e.target.value)} 
+                          className="form-input"
+                        />
+                      </td>
+                      <td>
+                        <input 
+                          type="number" 
+                          step="0.01" 
+                          value={t.amount} 
+                          onChange={(e) => handleRowChange(t.tempId, 'amount', e.target.value)} 
+                          className="form-input"
+                        />
+                      </td>
+                      <td>
+                        <select 
+                          value={t.type} 
+                          onChange={(e) => handleRowChange(t.tempId, 'type', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="USCITA">Expense</option>
+                          <option value="ENTRATA">Income</option>
+                        </select>
+                      </td>
+                      <td>
+                        <select 
+                          value={t.categoryId || ''} 
+                          onChange={(e) => handleRowChange(t.tempId, 'categoryId', e.target.value)}
+                          className="form-select"
+                        >
+                          <option value="">-- No Category --</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <button className="btn-icon" onClick={() => handleRemoveRow(t.tempId)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Confirm */}
+        {currentStep === 3 && (
+          <div className="glass-panel summary-card fade-in">
+            <CheckCircle2 size={64} color="var(--success)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+            <h2>Ready to Import!</h2>
+            <p className="text-muted">Please confirm the following data summary before final save</p>
+
+            <div className="summary-stats">
+              <div className="stat-item">
+                <span className="stat-value">{transactions.length}</span>
+                <span className="stat-label">Transactions</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
+                  {transactions.filter(t => t.type === 'ENTRATA').length}
+                </span>
+                <span className="stat-label">Incomes</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-value" style={{ color: 'var(--danger)' }}>
+                  {transactions.filter(t => t.type === 'USCITA').length}
+                </span>
+                <span className="stat-label">Expenses</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+              <button className="btn btn-glass" onClick={() => setCurrentStep(2)}>
+                Back to Review
+              </button>
+              <button className="btn btn-primary" onClick={handleFinalConfirm} disabled={isLoading} style={{ padding: '0.75rem 3rem' }}>
+                {isLoading ? 'Saving...' : 'Confirm & Save All'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
