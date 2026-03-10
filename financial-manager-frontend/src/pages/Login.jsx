@@ -5,9 +5,6 @@ import { loginUser, registerUser } from '../api';
 import { setAuth } from '../auth';
 import './Login.css';
 
-// Superuser credentials for frontend testing (bypasses backend)
-const SUPERUSER = { username: 'superuser', password: 'superuser' };
-
 const Login = () => {
   const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [username, setUsername] = useState('');
@@ -22,17 +19,6 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Superuser bypass for frontend testing
-      if (
-        mode === 'login' &&
-        username === SUPERUSER.username &&
-        password === SUPERUSER.password
-      ) {
-        setAuth('superuser-token', { username: 'superuser', userId: 'superuser-id' });
-        navigate('/dashboard');
-        return;
-      }
-
       if (mode === 'login') {
         const data = await loginUser(username, password);
         setAuth(data.token, { username: data.username, userId: data.userId });

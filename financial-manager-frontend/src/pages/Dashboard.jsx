@@ -41,8 +41,7 @@ const Dashboard = () => {
 
         setCategoryStats(mappedStats);
       } catch (err) {
-        // Should only reach here if something unexpected happens;
-        // individual API functions already return mock data on failure.
+        // Unexpected error loading dashboard data (e.g. backend down)
         console.error('Unexpected error loading dashboard data', err);
       } finally {
         setLoading(false);
