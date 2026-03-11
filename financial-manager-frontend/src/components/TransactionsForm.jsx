@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, MinusCircle, Tag, Calendar, FileText, DollarSign } from 'lucide-react';
+import { PlusCircle, MinusCircle, Tag, Calendar, FileText, Euro } from 'lucide-react';
 import { fetchCategories } from '../api';
 import './Components.css';
 
@@ -7,7 +7,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
   const [activeTab, setActiveTab] = useState('uscita'); // 'uscita' | 'entrata'
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
@@ -30,53 +30,56 @@ const TransactionsForm = ({ onAddTransaction }) => {
       description,
     });
 
-    // Reset form
+    // Reset form (keep date)
     setAmount('');
     setCategoryId('');
-    setDate('');
     setDescription('');
   };
 
   return (
     <div className="glass-panel form-card">
+      <h3 className="section-title" style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
+        Nuova Transazione
+      </h3>
+      
       <div className="tabs">
         <button
           className={`tab-btn ${activeTab === 'uscita' ? 'active-expense' : ''}`}
           onClick={() => { setActiveTab('uscita'); setCategoryId(''); }}
+          type="button"
         >
           <MinusCircle size={18} />
-          Add Expense
+          Uscita
         </button>
         <button
           className={`tab-btn ${activeTab === 'entrata' ? 'active-income' : ''}`}
           onClick={() => { setActiveTab('entrata'); setCategoryId(''); }}
+          type="button"
         >
           <PlusCircle size={18} />
-          Add Income
+          Entrata
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="transaction-form">
-        <div className="form-group row">
-          <div className="input-group full-width">
-            <label>Amount</label>
-            <div className="input-wrapper">
-              <DollarSign size={18} className="input-icon" />
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            </div>
+        <div className="form-group">
+          <label>Importo</label>
+          <div className="input-wrapper">
+            <Euro size={18} className="input-icon" />
+            <input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
           </div>
         </div>
 
         <div className="form-group row">
           <div className="input-group half-width">
-            <label>Category</label>
+            <label>Categoria</label>
             <div className="input-wrapper">
               <Tag size={18} className="input-icon" />
               <select
@@ -86,7 +89,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
                 disabled={loadingCats}
               >
                 <option value="" disabled>
-                  {loadingCats ? 'Loading...' : 'Select...'}
+                  {loadingCats ? 'Caricamento...' : 'Seleziona...'}
                 </option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>
@@ -98,7 +101,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
           </div>
 
           <div className="input-group half-width">
-            <label>Date</label>
+            <label>Data</label>
             <div className="input-wrapper">
               <Calendar size={18} className="input-icon" />
               <input
@@ -112,12 +115,12 @@ const TransactionsForm = ({ onAddTransaction }) => {
         </div>
 
         <div className="form-group">
-          <label>Description (Optional)</label>
+          <label>Descrizione (Opzionale)</label>
           <div className="input-wrapper">
             <FileText size={18} className="input-icon" />
             <input
               type="text"
-              placeholder="What was this for?"
+              placeholder="Per cosa è stato speso?"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -129,7 +132,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
           className={`btn ${activeTab === 'uscita' ? 'btn-danger' : 'btn-success'} transaction-submit-btn`}
           disabled={loadingCats}
         >
-          {activeTab === 'uscita' ? 'Save Expense' : 'Save Income'}
+          {activeTab === 'uscita' ? 'Salva Uscita' : 'Salva Entrata'}
         </button>
       </form>
     </div>
