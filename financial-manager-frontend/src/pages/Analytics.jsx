@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, BarChart3, Filter, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { fetchTransactions } from '../api';
 
 const Analytics = () => {
@@ -11,6 +11,10 @@ const Analytics = () => {
 
   // Date state for month selection
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  // Filter state
+  const [showIncome, setShowIncome] = useState(true);
+  const [showExpense, setShowExpense] = useState(true);
 
   // Re-fetch from backend every time the selected month changes
   useEffect(() => {
@@ -39,14 +43,14 @@ const Analytics = () => {
     });
   };
 
-  const monthYearStr = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthYearStr = currentDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
 
   // Transactions are already filtered by month from the backend
   // Just group by category
   const chartData = useMemo(() => {
     const categoryMap = {};
     transactions.forEach(tx => {
-      const cat = tx.category || 'Uncategorized';
+      const cat = tx.category || 'Non categorizzato';
       if (!categoryMap[cat]) {
         categoryMap[cat] = { name: cat, expense: 0, income: 0 };
       }
@@ -57,11 +61,17 @@ const Analytics = () => {
       }
     });
 
-    return Object.values(categoryMap).sort((a, b) => b.expense - a.expense || b.income - a.income);
-  }, [transactions]);
+    return Object.values(categoryMap)
+      .filter(item => {
+        // Keep category if it has any data of the enabled types
+        const hasVisibleData = (showIncome && item.income > 0) || (showExpense && item.expense > 0);
+        return hasVisibleData;
+      })
+      .sort((a, b) => b.expense - a.expense || b.income - a.income);
+  }, [transactions, showIncome, showExpense]);
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <header className="dashboard-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ 
@@ -73,8 +83,8 @@ const Analytics = () => {
             <BarChart3 size={24} color="white" />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.8rem', marginBottom: '0.2rem' }}>Analytics</h1>
-            <p className="text-muted text-sm">Review your categorize incomes and expenses.</p>
+            <h1 style={{ fontSize: '1.8rem', marginBottom: '0.2rem' }}>Analisi</h1>
+            <p className="text-muted text-sm">Analizza le tue entrate e uscite per categoria.</p>
           </div>
         </div>
 
@@ -83,56 +93,122 @@ const Analytics = () => {
           <button className="btn btn-glass" style={{ padding: '0.5rem' }} onClick={() => changeMonth(-1)}>
             <ChevronLeft size={20} />
           </button>
-          <span style={{ minWidth: '150px', textAlign: 'center', fontWeight: '600', fontSize: '1.1rem' }}>
+          <span style={{ minWidth: '150px', textAlign: 'center', fontWeight: '600', fontSize: '1.1rem', textTransform: 'capitalize' }}>
             {monthYearStr}
           </span>
-          <button className="btn btn-glass" style={{ padding: '0.5rem' }} onClick={() => changeMonth(1)} disabled={currentDate > new Date()}>
+          <button className="btn btn-glass" style={{ padding: '0.5rem' }} onClick={() => changeMonth(1)} disabled={currentDate >= new Date()}>
             <ChevronRight size={20} />
           </button>
         </div>
       </header>
 
-      {loading ? (
-        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
-          <p className="text-muted">Loading analytics data...</p>
-        </div>
-      ) : chartData.length === 0 ? (
-        <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
-          <h3 style={{ marginBottom: '0.5rem' }}>No Data Available</h3>
-          <p className="text-muted">You have no transactions recorded for {monthYearStr}.</p>
-        </div>
-      ) : (
-        <div className="glass-panel" style={{ padding: '2rem' }}>
-          <h3 className="section-title" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-            Cash Flow by Category
-          </h3>
-          <div style={{ height: '400px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                <XAxis dataKey="name" tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} />
-                <YAxis tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} tickFormatter={(value) => `$${value}`} />
-                <Tooltip 
-                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                  contentStyle={{ 
-                    backgroundColor: 'var(--bg-secondary)', 
-                    border: '1px solid var(--border-glass)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'white'
-                  }}
-                  formatter={(value) => [`$${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, undefined]}
-                />
-                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="income" name="Income" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={40} />
-                <Bar dataKey="expense" name="Expense" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '2rem', alignItems: 'start' }}>
+        
+        {/* Sidebar Filters */}
+        <aside className="glass-panel" style={{ padding: '1.5rem', position: 'sticky', top: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--accent-secondary)' }}>
+            <Filter size={18} />
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Filtri</h3>
           </div>
-        </div>
-      )}
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <label style={{ 
+              display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+              padding: '0.75rem', borderRadius: '8px', 
+              background: showIncome ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+              border: `1px solid ${showIncome ? 'var(--success)' : 'var(--border-glass)'}`,
+              transition: 'all 0.2s'
+            }}>
+              <input 
+                type="checkbox" 
+                checked={showIncome} 
+                onChange={(e) => setShowIncome(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success)' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowDownLeft size={16} color="var(--success)" />
+                <span style={{ fontWeight: 500, color: showIncome ? 'var(--text-primary)' : 'var(--text-muted)' }}>Entrate</span>
+              </div>
+            </label>
+
+            <label style={{ 
+              display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+              padding: '0.75rem', borderRadius: '8px', 
+              background: showExpense ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+              border: `1px solid ${showExpense ? 'var(--danger)' : 'var(--border-glass)'}`,
+              transition: 'all 0.2s'
+            }}>
+              <input 
+                type="checkbox" 
+                checked={showExpense} 
+                onChange={(e) => setShowExpense(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--danger)' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowUpRight size={16} color="var(--danger)" />
+                <span style={{ fontWeight: 500, color: showExpense ? 'var(--text-primary)' : 'var(--text-muted)' }}>Uscite</span>
+              </div>
+            </label>
+          </div>
+
+          <div style={{ marginTop: '2rem', padding: '1rem', borderTop: '1px solid var(--border-glass)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <p>Seleziona cosa mostrare nel grafico per confrontare meglio i flussi di cassa.</p>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main>
+          {loading ? (
+            <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
+              <p className="text-muted">Caricamento dati...</p>
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
+              <h3 style={{ marginBottom: '0.5rem' }}>Nessun Dato Disponibile</h3>
+              <p className="text-muted">Non ci sono transazioni per {monthYearStr} che corrispondano ai filtri selezionati.</p>
+            </div>
+          ) : (
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+              <h3 className="section-title" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                Flusso di Cassa per Categoria
+              </h3>
+              <div style={{ height: '500px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{fill: 'var(--text-muted)', fontSize: 12}} 
+                      axisLine={{stroke: 'var(--border-glass)'}} 
+                      angle={-45}
+                      textAnchor="end"
+                      interval={0}
+                    />
+                    <YAxis tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} tickFormatter={(value) => `€${value}`} />
+                    <Tooltip 
+                      cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                      contentStyle={{ 
+                        backgroundColor: 'var(--bg-secondary)', 
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: 'var(--radius-md)',
+                        color: 'white',
+                        boxShadow: 'var(--shadow-glass)'
+                      }}
+                      formatter={(value) => [`€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, undefined]}
+                    />
+                    <Legend verticalAlign="top" height={36} />
+                    {showIncome && <Bar dataKey="income" name="Entrate" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={32} />}
+                    {showExpense && <Bar dataKey="expense" name="Uscite" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={32} />}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
