@@ -89,7 +89,7 @@ const Analytics = () => {
         </div>
 
         {/* Month Selector Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(15,23,42,0.6)', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(28,22,20,0.6)', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-glass)' }}>
           <button className="btn btn-glass" style={{ padding: '0.5rem' }} onClick={() => changeMonth(-1)}>
             <ChevronLeft size={20} />
           </button>

@@ -11,16 +11,16 @@ import { Tag } from 'lucide-react';
 
 // Palette di colori vivaci per le categorie
 const COLORS = [
-  '#6366f1', // indigo
-  '#ec4899', // pink
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#3b82f6', // blue
-  '#ef4444', // red
-  '#8b5cf6', // violet
-  '#14b8a6', // teal
-  '#f97316', // orange
-  '#84cc16', // lime
+  '#af5c4c', // Terracotta
+  '#d4af37', // Gold
+  '#8b5e3c', // Leather
+  '#a67c52', // Tan
+  '#7d5a50', // Dusty Brown
+  '#c29b6d', // Sand
+  '#b2947e', // Taupe
+  '#6b4e31', // Coffee
+  '#d4b483', // Creamy Sand
+  '#543d28', // Dark Wood
 ];
 
 const formatCurrency = (value) =>

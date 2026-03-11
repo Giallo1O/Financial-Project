@@ -7,7 +7,7 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
 import './Components.css'; // Shared component styling
 
 const AccountSummary = ({ transactions }) => {
@@ -26,9 +26,9 @@ const AccountSummary = ({ transactions }) => {
       <div className="summary-header">
         <h3 className="section-title">Current Balance</h3>
         <div className="balance-display">
-          <DollarSign size={32} className="balance-icon" />
+          <Wallet size={32} className="balance-icon" />
           <h2 className={balance >= 0 ? 'text-success' : 'text-danger'}>
-            ${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            €{balance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
           </h2>
         </div>
       </div>
@@ -39,18 +39,18 @@ const AccountSummary = ({ transactions }) => {
             <ArrowUpRight size={20} className="text-success" />
           </div>
           <div>
-            <p className="text-muted text-sm">Monthly Income</p>
-            <h4>${incomes.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h4>
+            <p className="text-muted text-sm">Entrate Mensili</p>
+            <h4>€{incomes.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</h4>
           </div>
         </div>
-
+ 
         <div className="stat-box expense-box">
           <div className="stat-icon bg-danger-muted">
             <ArrowDownRight size={20} className="text-danger" />
           </div>
           <div>
-            <p className="text-muted text-sm">Monthly Expenses</p>
-            <h4>${expenses.toLocaleString('en-US', { minimumFractionDigits: 2 })}</h4>
+            <p className="text-muted text-sm">Uscite Mensili</p>
+            <h4>€{expenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</h4>
           </div>
         </div>
       </div>

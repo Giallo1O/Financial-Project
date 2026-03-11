@@ -30,7 +30,7 @@
   border-left: none;
   border-top: none;
   border-bottom: none;
-  background: rgba(15, 23, 42, 0.85); /* Slightly darker glass for sidebar */
+  background: rgba(28, 22, 20, 0.9); /* Warmer, darker glass for sidebar */
   z-index: 10;
 }
 
@@ -90,7 +90,7 @@
 .nav-link.active {
   background: var(--accent-gradient);
   color: white;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 15px rgba(175, 92, 76, 0.3);
 }
 
 .sidebar-footer {
