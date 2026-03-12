@@ -4,5 +4,5 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record TransactionEvent(UUID id, String description, BigDecimal amount, String type, UUID categoryId,
-		String userId) {
+		String userId, int month, int year) {
 }

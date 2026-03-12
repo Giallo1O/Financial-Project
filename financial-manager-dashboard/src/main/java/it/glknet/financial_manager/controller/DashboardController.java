@@ -22,8 +22,10 @@ public class DashboardController {
 	private final CategorySummaryRepository repository;
 
 	@GetMapping("/stats")
-	public ResponseEntity<List<CategorySummary>> getStats(@RequestParam String userId) {
-		// Ora restituisce solo le statistiche dell'utente loggato!
-		return ResponseEntity.ok(repository.findByUserId(userId));
+	public ResponseEntity<List<CategorySummary>> getStats(
+			@RequestParam String userId,
+			@RequestParam Integer month,
+			@RequestParam Integer year) {
+		return ResponseEntity.ok(repository.findByUserIdAndMonthAndYear(userId, month, year));
 	}
 }

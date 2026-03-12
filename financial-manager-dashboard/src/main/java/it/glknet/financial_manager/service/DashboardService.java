@@ -27,11 +27,15 @@ public class DashboardService {
 		log.info(">>> [Kafka] Ricevuto TransactionEvent: userId={}, categoryId={}, type={}, amount={}",
 				event.userId(), event.categoryId(), event.type(), event.amount());
 		// Cerchiamo la categoria nel DB, se non esiste ne creiamo una nuova
-		CategorySummary summary = repository.findByUserIdAndCategoryId(event.userId(), event.categoryId())
+		CategorySummary summary = repository.findByUserIdAndCategoryIdAndMonthAndYear(
+					event.userId(), event.categoryId(), event.month(), event.year()
+				)
 				.orElseGet(() -> {
 					CategorySummary newSummary = new CategorySummary();
 					newSummary.setUserId(event.userId());
 					newSummary.setCategoryId(event.categoryId());
+					newSummary.setMonth(event.month());
+					newSummary.setYear(event.year());
 					newSummary.setTotalAmount(BigDecimal.ZERO);
 					newSummary.setTransactionCount(0L);
 					return newSummary;
@@ -52,7 +56,9 @@ public class DashboardService {
 	public void handleTransactionDelete(TransactionDeleteEvent event) {
 		log.info("Ricevuto evento di eliminazione per categoria: {}", event.categoryId());
 
-		repository.findByUserIdAndCategoryId(event.userId(), event.categoryId()).ifPresent(summary -> {
+		repository.findByUserIdAndCategoryIdAndMonthAndYear(
+			event.userId(), event.categoryId(), event.month(), event.year()
+		).ifPresent(summary -> {
 			// Operazione inversa: se era un'USCITA, la sottraiamo dal totale
 			if ("USCITA".equals(event.type())) {
 				summary.setTotalAmount(summary.getTotalAmount().subtract(event.amount()));

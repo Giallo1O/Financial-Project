@@ -37,8 +37,11 @@ public class TransactionService {
 		Transaction saved = repository.save(transaction);
 
 		// 2. Creazione evento e invio a Kafka
-		TransactionEvent event = new TransactionEvent(saved.getId(), saved.getDescription(), saved.getAmount(),
-				saved.getType(), saved.getCategoryId(), saved.getUserId());
+		TransactionEvent event = new TransactionEvent(
+				saved.getId(), saved.getDescription(), saved.getAmount(),
+				saved.getType(), saved.getCategoryId(), saved.getUserId(),
+				saved.getCreatedAt().getMonthValue(), saved.getCreatedAt().getYear()
+		);
 
 		kafkaProducerService.sendTransactionEvent(event);
 
@@ -61,8 +64,11 @@ public class TransactionService {
 		repository.delete(tx);
 
 		// 3. Crea l'evento e spediscilo su Kafka
-		TransactionDeleteEvent event = new TransactionDeleteEvent(tx.getId(), tx.getAmount(), tx.getType().name(),
-				tx.getCategoryId(), tx.getUserId());
+		TransactionDeleteEvent event = new TransactionDeleteEvent(
+				tx.getId(), tx.getAmount(), tx.getType().name(),
+				tx.getCategoryId(), tx.getUserId(),
+				tx.getCreatedAt().getMonthValue(), tx.getCreatedAt().getYear()
+		);
 		kafkaProducerService.sendTransactionDeleteEvent(event);
 	}
 }

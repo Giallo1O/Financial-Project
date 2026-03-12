@@ -200,8 +200,12 @@ export async function bulkImportTransactions(transactions) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────
 
-export async function fetchDashboardStats() {
+export async function fetchDashboardStats({ month, year } = {}) {
   const userId = getCurrentUserId();
-  const response = await authenticatedFetch(`${DASHBOARD_API}/api/dashboard/stats?userId=${encodeURIComponent(userId)}`);
+  let url = `${DASHBOARD_API}/api/dashboard/stats?userId=${encodeURIComponent(userId)}`;
+  if (month != null && year != null) {
+    url += `&month=${month}&year=${year}`;
+  }
+  const response = await authenticatedFetch(url);
   return await response.json();
 }

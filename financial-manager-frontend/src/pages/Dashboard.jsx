@@ -14,16 +14,15 @@ const Dashboard = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [txs, dashboardStats, categories] = await Promise.all([
-          fetchTransactions(),
-          fetchDashboardStats(),
-          fetchCategories(),
-        ]);
-
-        // Filter transactions for only the CURRENT MONTH
         const now = new Date();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
+
+        const [txs, dashboardStats, categories] = await Promise.all([
+          fetchTransactions(),
+          fetchDashboardStats({ month: currentMonth + 1, year: currentYear }),
+          fetchCategories(),
+        ]);
 
         const currentMonthTxs = txs.filter((tx) => {
           const txDate = new Date(tx.date);

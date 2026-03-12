@@ -11,8 +11,8 @@ import it.glknet.financial_manager.model.CategorySummary;
 public interface CategorySummaryRepository extends JpaRepository<CategorySummary, UUID> {
 
 	// Per il Consumer: trova la riga esatta da aggiornare
-	Optional<CategorySummary> findByUserIdAndCategoryId(String userId, UUID categoryId);
+	Optional<CategorySummary> findByUserIdAndCategoryIdAndMonthAndYear(String userId, UUID categoryId, Integer month, Integer year);
 
-	// Per il Controller (API Frontend): trova tutte le statistiche di un utente
-	List<CategorySummary> findByUserId(String userId);
+	// Per il Controller (API Frontend): trova tutte le statistiche di un utente per un dato mese
+	List<CategorySummary> findByUserIdAndMonthAndYear(String userId, Integer month, Integer year);
 }

@@ -34,6 +34,12 @@ public class CategorySummary {
 
 	private Long transactionCount = 0L;
 
+	@Column(name = "month_period")
+	private Integer month;
+
+	@Column(name = "year_period")
+	private Integer year;
+
 	private LocalDateTime lastUpdate;
 
 }
