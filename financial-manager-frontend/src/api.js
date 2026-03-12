@@ -30,7 +30,7 @@ export async function authenticatedFetch(url, options = {}) {
     // Redirect using window.location for a hard reset to the login state
     window.location.href = '/login';
     // Return a promise that never resolves to stop further execution in the component
-    return new Promise(() => {});
+    return new Promise(() => { });
   }
 
   if (!response.ok) {
@@ -148,6 +148,7 @@ export async function createTransaction(transactionData) {
     type: transactionData.type ? transactionData.type.toUpperCase() : 'USCITA',
     categoryId: transactionData.categoryId,  // UUID from the category select
     userId: getCurrentUserId(),
+    transactionDate: transactionData.date,
   };
 
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions`, {
@@ -181,7 +182,7 @@ export async function deleteTransaction(id) {
 export async function parseCsv(file) {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/parse-csv`, {
     method: 'POST',
     body: formData,

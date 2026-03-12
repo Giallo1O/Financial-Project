@@ -32,13 +32,14 @@ public class TransactionService {
 
 		// 1. Salvataggio su DB
 		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
-				.type(request.type()).categoryId(request.categoryId()).userId(request.userId()).build();
+				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
+				.transactionDate(request.transactionDate()).build();
 
 		Transaction saved = repository.save(transaction);
 
 		// 2. Creazione evento e invio a Kafka
 		TransactionEvent event = new TransactionEvent(saved.getId(), saved.getDescription(), saved.getAmount(),
-				saved.getType(), saved.getCategoryId(), saved.getUserId());
+				saved.getType(), saved.getCategoryId(), saved.getUserId(), saved.getTransactionDate());
 
 		kafkaProducerService.sendTransactionEvent(event);
 
