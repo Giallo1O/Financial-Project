@@ -115,6 +115,12 @@ export async function createCategory(categoryData) {
   return await response.json();
 }
 
+export async function deleteCategory(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/categories/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ─── Transactions ──────────────────────────────────────────────────────────
 
 /**

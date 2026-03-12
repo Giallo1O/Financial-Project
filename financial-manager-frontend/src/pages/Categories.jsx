@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, Palette, Type, Check } from 'lucide-react';
-import { fetchCategories, createCategory } from '../api';
+import { Tag, Plus, Palette, Type, Check, X } from 'lucide-react';
+import { fetchCategories, createCategory, deleteCategory } from '../api';
 import '../components/Components.css'; // Corrected path
 
 
@@ -47,6 +47,18 @@ const Categories = () => {
     }
   };
 
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this category? All associated summaries will be removed from the dashboard.')) return;
+
+    try {
+      await deleteCategory(id);
+      setMessage({ type: 'success', text: 'Category deleted successfully!' });
+      loadCategories(); // Refresh list
+    } catch (err) {
+      setMessage({ type: 'error', text: `Failed to delete category: ${err.message}` });
+    }
+  };
+
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ marginBottom: '2rem' }}>
@@ -83,7 +95,33 @@ const Categories = () => {
                     backgroundColor: cat.color,
                     boxShadow: `0 0 8px ${cat.color}`
                   }} />
-                  <span style={{ fontWeight: '500' }}>{cat.name}</span>
+                  <span style={{ fontWeight: '500', flex: 1 }}>{cat.name}</span>
+                  <button
+                    onClick={() => handleDeleteCategory(cat.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                      e.currentTarget.style.color = 'var(--danger)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                    }}
+                    title="Delete Category"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>

@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import it.glknet.financial_manager.dto.CategoryDeleteEvent;
 import it.glknet.financial_manager.dto.TransactionDeleteEvent;
 import it.glknet.financial_manager.dto.TransactionEvent;
 import it.glknet.financial_manager.model.CategorySummary;
@@ -61,6 +62,15 @@ public class DashboardService {
 				repository.save(summary);
 				log.info("Totali aggiornati dopo eliminazione.");
 			}
+		});
+	}
+
+	@KafkaListener(topics = "category-delete-topic", groupId = "dashboard-group-v2")
+	public void handleCategoryDelete(CategoryDeleteEvent event) {
+		log.info(">>> [Kafka] Ricevuto CategoryDeleteEvent per categoryId={}", event.categoryId());
+		repository.findByUserIdAndCategoryId(event.userId(), event.categoryId()).ifPresent(summary -> {
+			repository.delete(summary);
+			log.info(">>> [Kafka] CategorySummary eliminata per userId={}, categoryId={}", event.userId(), event.categoryId());
 		});
 	}
 }
