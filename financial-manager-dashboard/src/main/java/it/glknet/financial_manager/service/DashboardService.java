@@ -35,18 +35,17 @@ public class DashboardService {
 					newSummary.setCategoryId(event.categoryId());
 					newSummary.setTotalAmount(BigDecimal.ZERO);
 					newSummary.setTransactionCount(0L);
+					newSummary.setExpense("USCITA".equalsIgnoreCase(event.type()));
 					return newSummary;
 				});
 
-		// Per il grafico "Spese per Categoria", accumuliamo solo le USCITE come valori
-		// positivi
-		if ("USCITA".equals(event.type())) {
-			summary.setTotalAmount(summary.getTotalAmount().add(event.amount()));
-			summary.setTransactionCount(summary.getTransactionCount() + 1);
-			summary.setLastUpdate(LocalDateTime.now());
-			repository.save(summary);
-			log.info(">>> [Kafka] Statistiche aggiornate per userId={}, categoryId={}", event.userId(), event.categoryId());
-		}
+		// Accumuliamo le statistiche
+		summary.setTotalAmount(summary.getTotalAmount().add(event.amount()));
+		summary.setTransactionCount(summary.getTransactionCount() + 1);
+		summary.setLastUpdate(LocalDateTime.now());
+		repository.save(summary);
+		log.info(">>> [Kafka] Statistiche aggiornate ({}) per userId={}, categoryId={}", 
+				event.type(), event.userId(), event.categoryId());
 	}
 
 	@KafkaListener(topics = "transactions-delete-topic", groupId = "dashboard-group-v2")
@@ -54,14 +53,12 @@ public class DashboardService {
 		log.info("Ricevuto evento di eliminazione per categoria: {}", event.categoryId());
 
 		repository.findByUserIdAndCategoryId(event.userId(), event.categoryId()).ifPresent(summary -> {
-			// Operazione inversa: se era un'USCITA, la sottraiamo dal totale
-			if ("USCITA".equals(event.type())) {
-				summary.setTotalAmount(summary.getTotalAmount().subtract(event.amount()));
-				summary.setTransactionCount(summary.getTransactionCount() - 1);
-				summary.setLastUpdate(LocalDateTime.now());
-				repository.save(summary);
-				log.info("Totali aggiornati dopo eliminazione.");
-			}
+			// Operazione inversa: sottraiamo dal totale
+			summary.setTotalAmount(summary.getTotalAmount().subtract(event.amount()));
+			summary.setTransactionCount(summary.getTransactionCount() - 1);
+			summary.setLastUpdate(LocalDateTime.now());
+			repository.save(summary);
+			log.info("Totali aggiornati dopo eliminazione di un evento di tipo {}.", event.type());
 		});
 	}
 

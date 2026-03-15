@@ -30,6 +30,10 @@ public class CategorySummary {
 
 	@Column(name = "category_id", nullable = false)
 	private UUID categoryId;
+
+	@Column(name = "is_expense", nullable = false, columnDefinition = "boolean default true")
+	private boolean expense = true;
+
 	private BigDecimal totalAmount = BigDecimal.ZERO;
 
 	private Long transactionCount = 0L;

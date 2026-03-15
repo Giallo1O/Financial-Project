@@ -49,7 +49,7 @@ public class CategoryController {
 		categoryRepository.findById(id).ifPresent(category -> {
 			categoryRepository.deleteById(id);
 			// Invia evento Kafka per notificare il microservizio dashboard
-			kafkaProducerService.sendCategoryDeleteEvent(new CategoryDeleteEvent(id, category.getUserId()));
+			kafkaProducerService.sendCategoryDeleteEvent(new CategoryDeleteEvent(id, category.getUserId(), category.isExpense()));
 		});
 		return ResponseEntity.noContent().build();
 	}

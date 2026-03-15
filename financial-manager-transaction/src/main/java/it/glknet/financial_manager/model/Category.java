@@ -36,4 +36,8 @@ public class Category {
 
 	@Column(name = "user_id", nullable = false)
 	private String userId; // Fondamentale: ogni utente vede solo le SUE categorie
+
+	@Column(name = "is_expense", nullable = false, columnDefinition = "boolean default true")
+	@Builder.Default
+	private boolean expense = true;
 }

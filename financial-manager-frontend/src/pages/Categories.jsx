@@ -10,6 +10,7 @@ const Categories = () => {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [icon, setIcon] = useState('tag');
+  const [isExpense, setIsExpense] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -36,7 +37,7 @@ const Categories = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      await createCategory({ name, color, icon });
+      await createCategory({ name, color, icon, expense: isExpense });
       setMessage({ type: 'success', text: 'Category created successfully!' });
       setName('');
       loadCategories(); // Refresh list
@@ -95,7 +96,12 @@ const Categories = () => {
                     backgroundColor: cat.color,
                     boxShadow: `0 0 8px ${cat.color}`
                   }} />
-                  <span style={{ fontWeight: '500', flex: 1 }}>{cat.name}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                    <span style={{ fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.name}</span>
+                    <span style={{ fontSize: '0.7rem', color: cat.expense ? 'var(--danger)' : 'var(--success)', opacity: 0.8 }}>
+                      {cat.expense ? 'Uscita' : 'Entrata'}
+                    </span>
+                  </div>
                   <button
                     onClick={() => handleDeleteCategory(cat.id)}
                     style={{
@@ -164,6 +170,28 @@ const Categories = () => {
                     onChange={(e) => setColor(e.target.value)}
                     style={{ height: '40px', padding: '2px', cursor: 'pointer' }}
                   />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Tipo Categoria</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsExpense(true)}
+                    className={`btn ${isExpense ? 'btn-danger' : ''}`}
+                    style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', opacity: isExpense ? 1 : 0.4 }}
+                  >
+                    Uscita
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsExpense(false)}
+                    className={`btn ${!isExpense ? 'btn-success' : ''}`}
+                    style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', opacity: !isExpense ? 1 : 0.4 }}
+                  >
+                    Entrata
+                  </button>
                 </div>
               </div>
 
