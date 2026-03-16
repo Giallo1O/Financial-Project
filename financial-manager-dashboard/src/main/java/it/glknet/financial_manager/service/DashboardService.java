@@ -28,14 +28,14 @@ public class DashboardService {
 				event.userId(), event.categoryId(), event.type(), event.amount());
 		// Cerchiamo la categoria nel DB, se non esiste ne creiamo una nuova
 		CategorySummary summary = repository.findByUserIdAndCategoryIdAndMonthAndYear(
-					event.userId(), event.categoryId(), event.month(), event.year()
-				)
+				event.userId(), event.categoryId(), event.transactionDate().getMonthValue(),
+				event.transactionDate().getYear())
 				.orElseGet(() -> {
 					CategorySummary newSummary = new CategorySummary();
 					newSummary.setUserId(event.userId());
 					newSummary.setCategoryId(event.categoryId());
-					newSummary.setMonth(event.month());
-					newSummary.setYear(event.year());
+					newSummary.setMonth(event.transactionDate().getMonthValue());
+					newSummary.setYear(event.transactionDate().getYear());
 					newSummary.setTotalAmount(BigDecimal.ZERO);
 					newSummary.setTransactionCount(0L);
 					return newSummary;
@@ -48,7 +48,8 @@ public class DashboardService {
 			summary.setTransactionCount(summary.getTransactionCount() + 1);
 			summary.setLastUpdate(LocalDateTime.now());
 			repository.save(summary);
-			log.info(">>> [Kafka] Statistiche aggiornate per userId={}, categoryId={}", event.userId(), event.categoryId());
+			log.info(">>> [Kafka] Statistiche aggiornate per userId={}, categoryId={}", event.userId(),
+					event.categoryId());
 		}
 	}
 
@@ -57,16 +58,15 @@ public class DashboardService {
 		log.info("Ricevuto evento di eliminazione per categoria: {}", event.categoryId());
 
 		repository.findByUserIdAndCategoryIdAndMonthAndYear(
-			event.userId(), event.categoryId(), event.month(), event.year()
-		).ifPresent(summary -> {
-			// Operazione inversa: se era un'USCITA, la sottraiamo dal totale
-			if ("USCITA".equals(event.type())) {
-				summary.setTotalAmount(summary.getTotalAmount().subtract(event.amount()));
-				summary.setTransactionCount(summary.getTransactionCount() - 1);
-				summary.setLastUpdate(LocalDateTime.now());
-				repository.save(summary);
-				log.info("Totali aggiornati dopo eliminazione.");
-			}
-		});
+				event.userId(), event.categoryId(), event.month(), event.year()).ifPresent(summary -> {
+					// Operazione inversa: se era un'USCITA, la sottraiamo dal totale
+					if ("USCITA".equals(event.type())) {
+						summary.setTotalAmount(summary.getTotalAmount().subtract(event.amount()));
+						summary.setTransactionCount(summary.getTransactionCount() - 1);
+						summary.setLastUpdate(LocalDateTime.now());
+						repository.save(summary);
+						log.info("Totali aggiornati dopo eliminazione.");
+					}
+				});
 	}
 }
