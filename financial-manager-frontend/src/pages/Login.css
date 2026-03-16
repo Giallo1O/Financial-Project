@@ -14,8 +14,15 @@
 }
 
 @keyframes slideUp {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .login-header {
@@ -32,7 +39,7 @@
   border-radius: 50%;
   background: var(--accent-gradient);
   margin-bottom: 1.5rem;
-  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 8px 24px rgba(158, 85, 69, 0.25);
 }
 
 .logo-icon {
@@ -58,21 +65,7 @@
   color: var(--text-secondary);
 }
 
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 1rem;
-  color: var(--text-muted);
-}
-
-.input-wrapper input {
-  padding-left: 2.75rem;
-}
+/* Global input styles consolidated in index.css */
 
 .login-button {
   width: 100%;
@@ -97,14 +90,21 @@
 }
 
 .login-switch {
-  text-align: center;
+  display: flex;
+  justify-content: center;
   margin-top: 1.5rem;
+}
+
+.login-switch p {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .link-btn {
   background: none;
   border: none;
-  color: var(--accent-primary, #8b5cf6);
+  color: var(--accent-secondary);
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;

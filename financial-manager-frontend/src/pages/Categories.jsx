@@ -162,14 +162,64 @@ const Categories = () => {
 
               <div className="form-group">
                 <label>Color</label>
-                <div className="input-wrapper">
-                  <Palette size={18} className="input-icon" />
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    style={{ height: '40px', padding: '2px', cursor: 'pointer' }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  {[
+                    '#9e5545', '#c5a028', '#8b4513', '#cc7722', '#d2b48c', '#808000',
+                    '#800000', '#ff7f50', '#f4c430', '#6366f1', '#10b981', '#ef4444'
+                  ].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '1',
+                        borderRadius: '50%',
+                        backgroundColor: c,
+                        border: color === c ? '2px solid white' : '2px solid transparent',
+                        boxShadow: color === c ? `0 0 10px ${c}` : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        padding: 0
+                      }}
+                    />
+                  ))}
+                  <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
+                    <Palette 
+                      size={20} 
+                      style={{ 
+                        position: 'absolute', 
+                        top: '50%', 
+                        left: '50%', 
+                        transform: 'translate(-50%, -50%)',
+                        pointerEvents: 'none',
+                        color: 'white',
+                        opacity: 0.8
+                      }} 
+                    />
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        padding: 0, 
+                        border: 'none', 
+                        borderRadius: '50%', 
+                        cursor: 'pointer',
+                        opacity: 0,
+                        position: 'absolute'
+                      }}
+                    />
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      border: '1px solid var(--border-glass)',
+                      background: 'rgba(255,255,255,0.05)'
+                    }} />
+                  </div>
                 </div>
               </div>
 

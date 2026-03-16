@@ -48,7 +48,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
           onClick={() => { setActiveTab('uscita'); setCategoryId(''); }}
           type="button"
         >
-          <MinusCircle size={18} />
+          <MinusCircle size={22} />
           Uscita
         </button>
         <button
@@ -56,7 +56,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
           onClick={() => { setActiveTab('entrata'); setCategoryId(''); }}
           type="button"
         >
-          <PlusCircle size={18} />
+          <PlusCircle size={22} />
           Entrata
         </button>
       </div>

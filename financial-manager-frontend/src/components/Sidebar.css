@@ -90,7 +90,7 @@
 .nav-link.active {
   background: var(--accent-gradient);
   color: white;
-  box-shadow: 0 4px 15px rgba(175, 92, 76, 0.3);
+  box-shadow: 0 4px 12px rgba(158, 85, 69, 0.25);
 }
 
 .sidebar-footer {

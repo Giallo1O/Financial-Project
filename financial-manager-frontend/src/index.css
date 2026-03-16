@@ -2,33 +2,39 @@
 
 :root {
   /* Warm Desert Theme - Premium, Earthy, Sophisticated */
-  --bg-primary: #12100e; /* Near black with warm undertone */
+  --bg-primary: #12100e;
+  /* Near black with warm undertone */
   --bg-secondary: #1f1a17;
   --bg-glass: rgba(45, 36, 33, 0.7);
   --bg-glass-hover: rgba(58, 46, 42, 0.85);
 
-  --text-primary: #f5f5dc; /* Beige/Cream */
+  --text-primary: #f5f5dc;
+  /* Beige/Cream */
   --text-secondary: #d6d3d1;
   --text-muted: #a8a29e;
 
-  --accent-primary: #af5c4c; /* Warm Terracotta */
-  --accent-secondary: #d4af37; /* Soft Gold */
+  --accent-primary: #9e5545;
+  /* Slightly deeper, less bright terracotta */
+  --accent-secondary: #c5a028;
+  /* Muted gold */
   --accent-gradient: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
 
-  --success: #10b981; /* Keeping standard success/danger but can be softened if needed */
+  --success: #10b981;
+  /* Keeping standard success/danger but can be softened if needed */
   --danger: #ef4444;
   --warning: #f59e0b;
 
-  --border-glass: rgba(212, 175, 55, 0.15); /* Golden tint in borders */
-  --shadow-glass: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
-  
+  --border-glass: rgba(197, 160, 40, 0.12);
+  /* Muted golden tint in borders */
+  --shadow-glass: 0 12px 30px 0 rgba(0, 0, 0, 0.5);
+
   --radius-md: 1rem;
   --radius-lg: 1.5rem;
   --radius-xl: 2rem;
   --radius-full: 9999px;
 
-  --transition-fast: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -76,13 +82,26 @@ body::after {
 }
 
 @keyframes float {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(10%, 10%) scale(1.1); }
-  100% { transform: translate(-5%, 5%) scale(0.95); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(10%, 10%) scale(1.1);
+  }
+
+  100% {
+    transform: translate(-5%, 5%) scale(0.95);
+  }
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text-primary);
@@ -110,7 +129,9 @@ a:hover {
 }
 
 /* Forms */
-input, select, textarea {
+input,
+select,
+textarea {
   width: 100%;
   background: rgba(28, 22, 20, 0.6);
   border: 1px solid var(--border-glass);
@@ -122,9 +143,40 @@ input, select, textarea {
   transition: var(--transition-fast);
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--accent-secondary);
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 1rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-wrapper input,
+.input-wrapper select {
+  padding-left: 2.75rem !important;
+}
+
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 1.2rem;
+  padding-right: 2.5rem;
 }
 
 /* Buttons */
@@ -146,12 +198,12 @@ input:focus, select:focus, textarea:focus {
 .btn-primary {
   background: var(--accent-gradient);
   color: white;
-  box-shadow: 0 4px 14px rgba(175, 92, 76, 0.4);
+  box-shadow: 0 4px 12px rgba(158, 85, 69, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(175, 92, 76, 0.6);
+  box-shadow: 0 6px 16px rgba(158, 85, 69, 0.45);
 }
 
 .btn-primary:active {
@@ -198,13 +250,16 @@ input:focus, select:focus, textarea:focus {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary); 
+  background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-secondary); 
+  background: var(--bg-secondary);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-primary); 
+  background: var(--accent-primary);
 }
