@@ -3,6 +3,7 @@ package it.glknet.financial_manager.service;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,12 +68,12 @@ public class CsvImportService {
 					}
 
 					TransactionRequest req = new TransactionRequest(
-							description.isEmpty() ? "Imported Transaction" : description,
-							amount,
-							type,
-							null, // Category is unknown yet
-							"default-user" // Realistically we should get this from security context or parameter
-					);
+							description.isEmpty() ? "Imported Transaction" : description, amount, type, null, // Category
+																												// is
+																												// unknown
+																												// yet
+							"default-user", // Realistically we should get this from security context or parameter
+							LocalDate.now());
 					requests.add(req);
 
 				} catch (Exception e) {

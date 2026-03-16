@@ -14,8 +14,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     List<Transaction> findByUserId(String userId);
 
     @Query("SELECT t FROM Transaction t WHERE t.userId = :userId " +
-           "AND EXTRACT(MONTH FROM t.createdAt) = :month " +
-           "AND EXTRACT(YEAR FROM t.createdAt) = :year")
+           "AND EXTRACT(MONTH FROM t.transactionDate) = :month " +
+           "AND EXTRACT(YEAR FROM t.transactionDate) = :year")
     List<Transaction> findByUserIdAndMonthAndYear(
             @Param("userId") String userId,
             @Param("month") int month,
