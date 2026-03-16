@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { ChevronLeft, ChevronRight, BarChart3, Filter, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { fetchTransactions } from '../api';
+import DailyCategoryChart from '../components/DailyCategoryChart';
 
 const Analytics = () => {
   const [transactions, setTransactions] = useState([]);
@@ -15,6 +16,12 @@ const Analytics = () => {
   // Filter state
   const [showIncome, setShowIncome] = useState(true);
   const [showExpense, setShowExpense] = useState(true);
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' or 'daily'
+
+  // Daily view type (expense or income) - synced with sidebar
+  const [dailyViewType, setDailyViewType] = useState('expense'); 
 
   // Re-fetch from backend every time the selected month changes
   useEffect(() => {
@@ -112,43 +119,95 @@ const Analytics = () => {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label style={{ 
-              display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
-              padding: '0.75rem', borderRadius: '8px', 
-              background: showIncome ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-              border: `1px solid ${showIncome ? 'var(--success)' : 'var(--border-glass)'}`,
-              transition: 'all 0.2s'
-            }}>
-              <input 
-                type="checkbox" 
-                checked={showIncome} 
-                onChange={(e) => setShowIncome(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success)' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ArrowDownLeft size={16} color="var(--success)" />
-                <span style={{ fontWeight: 500, color: showIncome ? 'var(--text-primary)' : 'var(--text-muted)' }}>Entrate</span>
-              </div>
-            </label>
+            {activeTab === 'overview' ? (
+              <>
+                <label style={{ 
+                  display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+                  padding: '0.75rem', borderRadius: '8px', 
+                  background: showIncome ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                  border: `1px solid ${showIncome ? 'var(--success)' : 'var(--border-glass)'}`,
+                  transition: 'all 0.2s'
+                }}>
+                  <input 
+                    type="checkbox" 
+                    checked={showIncome} 
+                    onChange={(e) => setShowIncome(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success)' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ArrowDownLeft size={16} color="var(--success)" />
+                    <span style={{ fontWeight: 500, color: showIncome ? 'var(--text-primary)' : 'var(--text-muted)' }}>Entrate</span>
+                  </div>
+                </label>
 
-            <label style={{ 
-              display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
-              padding: '0.75rem', borderRadius: '8px', 
-              background: showExpense ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-              border: `1px solid ${showExpense ? 'var(--danger)' : 'var(--border-glass)'}`,
-              transition: 'all 0.2s'
-            }}>
-              <input 
-                type="checkbox" 
-                checked={showExpense} 
-                onChange={(e) => setShowExpense(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--danger)' }}
-              />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ArrowUpRight size={16} color="var(--danger)" />
-                <span style={{ fontWeight: 500, color: showExpense ? 'var(--text-primary)' : 'var(--text-muted)' }}>Uscite</span>
-              </div>
-            </label>
+                <label style={{ 
+                  display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+                  padding: '0.75rem', borderRadius: '8px', 
+                  background: showExpense ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                  border: `1px solid ${showExpense ? 'var(--danger)' : 'var(--border-glass)'}`,
+                  transition: 'all 0.2s'
+                }}>
+                  <input 
+                    type="checkbox" 
+                    checked={showExpense} 
+                    onChange={(e) => setShowExpense(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--danger)' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ArrowUpRight size={16} color="var(--danger)" />
+                    <span style={{ fontWeight: 500, color: showExpense ? 'var(--text-primary)' : 'var(--text-muted)' }}>Uscite</span>
+                  </div>
+                </label>
+              </>
+            ) : (
+              <>
+                <label 
+                  onClick={() => setDailyViewType('income')}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+                    padding: '0.75rem', borderRadius: '8px', 
+                    background: dailyViewType === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
+                    border: `1px solid ${dailyViewType === 'income' ? 'var(--success)' : 'var(--border-glass)'}`,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input 
+                    type="radio" 
+                    name="dailyType"
+                    checked={dailyViewType === 'income'} 
+                    readOnly
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--success)' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ArrowDownLeft size={16} color="var(--success)" />
+                    <span style={{ fontWeight: 500, color: dailyViewType === 'income' ? 'var(--text-primary)' : 'var(--text-muted)' }}>Solo Entrate</span>
+                  </div>
+                </label>
+
+                <label 
+                  onClick={() => setDailyViewType('expense')}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer',
+                    padding: '0.75rem', borderRadius: '8px', 
+                    background: dailyViewType === 'expense' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                    border: `1px solid ${dailyViewType === 'expense' ? 'var(--danger)' : 'var(--border-glass)'}`,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <input 
+                    type="radio" 
+                    name="dailyType"
+                    checked={dailyViewType === 'expense'} 
+                    readOnly
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--danger)' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ArrowUpRight size={16} color="var(--danger)" />
+                    <span style={{ fontWeight: 500, color: dailyViewType === 'expense' ? 'var(--text-primary)' : 'var(--text-muted)' }}>Solo Uscite</span>
+                  </div>
+                </label>
+              </>
+            )}
           </div>
 
           <div style={{ marginTop: '2rem', padding: '1rem', borderTop: '1px solid var(--border-glass)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -162,49 +221,99 @@ const Analytics = () => {
             <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
               <p className="text-muted">Caricamento dati...</p>
             </div>
-          ) : chartData.length === 0 ? (
-            <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
-              <h3 style={{ marginBottom: '0.5rem' }}>Nessun Dato Disponibile</h3>
-              <p className="text-muted">Non ci sono transazioni per {monthYearStr} che corrispondano ai filtri selezionati.</p>
-            </div>
           ) : (
-            <div className="glass-panel" style={{ padding: '2rem' }}>
-              <h3 className="section-title" style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                Flusso di Cassa per Categoria
-              </h3>
-              <div style={{ height: '500px', width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{fill: 'var(--text-muted)', fontSize: 12}} 
-                      axisLine={{stroke: 'var(--border-glass)'}} 
-                      angle={-45}
-                      textAnchor="end"
-                      interval={0}
-                    />
-                    <YAxis tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} tickFormatter={(value) => `€${value}`} />
-                    <Tooltip 
-                      cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                      contentStyle={{ 
-                        backgroundColor: 'var(--bg-secondary)', 
-                        border: '1px solid var(--border-glass)',
-                        borderRadius: 'var(--radius-md)',
-                        color: 'white',
-                        boxShadow: 'var(--shadow-glass)'
-                      }}
-                      formatter={(value) => [`€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, undefined]}
-                    />
-                    <Legend verticalAlign="top" height={36} />
-                    {showIncome && <Bar dataKey="income" name="Entrate" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={32} />}
-                    {showExpense && <Bar dataKey="expense" name="Uscite" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={32} />}
-                  </BarChart>
-                </ResponsiveContainer>
+            <div>
+              {/* Tabs for switching views - ALWAYS VISIBLE if not loading */}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem' }}>
+                <button 
+                  onClick={() => setActiveTab('overview')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: activeTab === 'overview' ? 'var(--accent-primary)' : 'transparent',
+                    color: activeTab === 'overview' ? 'white' : 'var(--text-muted)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: activeTab === 'overview' ? 'var(--shadow-glow)' : 'none'
+                  }}
+                >
+                  Vista Generale
+                </button>
+                <button 
+                  onClick={() => setActiveTab('daily')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: activeTab === 'daily' ? 'var(--accent-primary)' : 'transparent',
+                    color: activeTab === 'daily' ? 'white' : 'var(--text-muted)',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: activeTab === 'daily' ? 'var(--shadow-glow)' : 'none'
+                  }}
+                >
+                  Vista Giornaliera
+                </button>
               </div>
+
+              {activeTab === 'overview' ? (
+                // OVERVIEW TAB CONTENT
+                chartData.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
+                    <h3 style={{ marginBottom: '0.5rem' }}>Nessun Dato Disponibile</h3>
+                    <p className="text-muted">Non ci sono transazioni per {monthYearStr} che corrispondano ai filtri selezionati.</p>
+                  </div>
+                ) : (
+                  <div className="glass-panel" style={{ padding: '2rem' }}>
+                    <h3 className="section-title" style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                      Flusso di Cassa per Categoria
+                    </h3>
+                    <div style={{ height: '500px', width: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={chartData}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                          <XAxis 
+                            dataKey="name" 
+                            tick={{fill: 'var(--text-muted)', fontSize: 12}} 
+                            axisLine={{stroke: 'var(--border-glass)'}} 
+                            angle={-45}
+                            textAnchor="end"
+                            interval={0}
+                          />
+                          <YAxis tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} tickFormatter={(value) => `€${value}`} />
+                          <Tooltip 
+                            cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                            contentStyle={{ 
+                              backgroundColor: 'var(--bg-secondary)', 
+                              border: '1px solid var(--border-glass)',
+                              borderRadius: 'var(--radius-md)',
+                              color: 'white',
+                              boxShadow: 'var(--shadow-glass)'
+                            }}
+                            formatter={(value) => [`€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, undefined]}
+                          />
+                          <Legend verticalAlign="top" height={36} />
+                          {showIncome && <Bar dataKey="income" name="Entrate" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={32} />}
+                          {showExpense && <Bar dataKey="expense" name="Uscite" fill="var(--danger)" radius={[4, 4, 0, 0]} barSize={32} />}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )
+              ) : (
+                // DAILY TAB CONTENT
+                <DailyCategoryChart 
+                  transactions={transactions} 
+                  currentDate={currentDate} 
+                  viewType={dailyViewType}
+                />
+              )}
             </div>
           )}
         </main>

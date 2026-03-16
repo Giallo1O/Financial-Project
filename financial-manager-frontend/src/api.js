@@ -78,15 +78,19 @@ export function getCurrentUserId() {
 // ─── Helper: mappa categoryId (UUID) → nome ───────────────────────────────
 
 function mapTransactions(list, categoryMap) {
-  return list.map(t => ({
-    id: t.id,
-    type: t.type ? t.type.toLowerCase() : '',
-    amount: Number(t.amount),
-    categoryId: t.categoryId,
-    category: categoryMap[t.categoryId] ?? t.categoryId ?? '—',
-    description: t.description,
-    date: t.createdAt ? t.createdAt.split('T')[0] : '',
-  }));
+  return list.map(t => {
+    const categoryInfo = categoryMap[t.categoryId];
+    return {
+      id: t.id,
+      type: t.type ? t.type.toLowerCase() : '',
+      amount: Number(t.amount),
+      categoryId: t.categoryId,
+      category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
+      categoryColor: categoryInfo ? categoryInfo.color : '#6b7280', // default gray
+      description: t.description,
+      date: t.createdAt ? t.createdAt.split('T')[0] : '',
+    };
+  });
 }
 
 // ─── Categories ───────────────────────────────────────────────────────────
@@ -142,8 +146,8 @@ export async function fetchTransactions({ month, year } = {}) {
 
   const data = await txResponse.json();
 
-  // Build id→name map for fast lookup
-  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c.name]));
+  // Build id→category map for fast lookup
+  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
   return mapTransactions(data, categoryMap);
 }
 
@@ -166,14 +170,16 @@ export async function createTransaction(transactionData) {
   const t = await response.json();
 
   const categories = await fetchCategories();
-  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c.name]));
+  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const categoryInfo = categoryMap[t.categoryId];
 
   return {
     id: t.id,
     type: t.type ? t.type.toLowerCase() : '',
     amount: Number(t.amount),
     categoryId: t.categoryId,
-    category: categoryMap[t.categoryId] ?? t.categoryId ?? '—',
+    category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
+    categoryColor: categoryInfo ? categoryInfo.color : '#6b7280',
     description: t.description,
     date: t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
   };
@@ -214,5 +220,16 @@ export async function fetchDashboardStats({ month, year } = {}) {
     url += `&month=${month}&year=${year}`;
   }
   const response = await authenticatedFetch(url);
-  return await response.json();
+  const data = await response.json();
+  
+  if (data.categoryExpenses) {
+    const categories = await fetchCategories();
+    const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
+    data.categoryExpenses = data.categoryExpenses.map(item => ({
+        ...item,
+        categoryColor: categoryMap[item.categoryId] ? categoryMap[item.categoryId].color : '#6b7280'
+    }));
+  }
+  
+  return data;
 }
