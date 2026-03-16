@@ -1,6 +1,7 @@
 package it.glknet.financial_manager.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +24,7 @@ public class DashboardController {
 
 	@GetMapping("/stats")
 	public ResponseEntity<List<CategorySummary>> getStats(
-			@RequestParam String userId,
+			@RequestParam UUID userId,
 			@RequestParam Integer month,
 			@RequestParam Integer year) {
 		return ResponseEntity.ok(repository.findByUserIdAndMonthAndYear(userId, month, year));

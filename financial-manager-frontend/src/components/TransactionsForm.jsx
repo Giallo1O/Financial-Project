@@ -91,11 +91,13 @@ const TransactionsForm = ({ onAddTransaction }) => {
                 <option value="" disabled>
                   {loadingCats ? 'Caricamento...' : 'Seleziona...'}
                 </option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
+                {categories
+                  .filter(cat => activeTab === 'uscita' ? cat.expense : !cat.expense)
+                  .map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
               </select>
             </div>
           </div>

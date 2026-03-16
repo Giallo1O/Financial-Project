@@ -65,7 +65,7 @@ public class TransactionService {
 		TransactionDeleteEvent event = new TransactionDeleteEvent(
 				tx.getId(), tx.getAmount(), tx.getType().name(),
 				tx.getCategoryId(), tx.getUserId(),
-				tx.getCreatedAt().getMonthValue(), tx.getCreatedAt().getYear());
+				tx.getTransactionDate());
 		kafkaProducerService.sendTransactionDeleteEvent(event);
 	}
 }

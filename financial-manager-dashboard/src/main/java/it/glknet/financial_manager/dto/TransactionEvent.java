@@ -5,5 +5,5 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 public record TransactionEvent(UUID id, String description, BigDecimal amount, String type, UUID categoryId,
-		String userId, LocalDate transactionDate) {
+		UUID userId, LocalDate transactionDate) {
 }

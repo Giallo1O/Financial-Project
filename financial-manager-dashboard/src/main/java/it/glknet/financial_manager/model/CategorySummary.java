@@ -26,10 +26,14 @@ public class CategorySummary {
 	private UUID id; // Nuova chiave primaria indipendente
 
 	@Column(name = "user_id", nullable = false)
-	private String userId;
+	private UUID userId;
 
 	@Column(name = "category_id", nullable = false)
 	private UUID categoryId;
+
+	@Column(name = "is_expense", nullable = false, columnDefinition = "boolean default true")
+	private boolean expense = true;
+
 	private BigDecimal totalAmount = BigDecimal.ZERO;
 
 	private Long transactionCount = 0L;
