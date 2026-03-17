@@ -6,7 +6,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,8 +18,6 @@ import com.opencsv.CSVReaderBuilder;
 
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.TransactionType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Service
 public class CsvImportService {
@@ -68,11 +69,9 @@ public class CsvImportService {
 					}
 
 					TransactionRequest req = new TransactionRequest(
-							description.isEmpty() ? "Imported Transaction" : description, amount, type, null, // Category
-																												// is
-																												// unknown
-																												// yet
-							"default-user", // Realistically we should get this from security context or parameter
+							description.isEmpty() ? "Imported Transaction" : description, amount, type,
+							UUID.randomUUID(),
+							UUID.randomUUID(),
 							LocalDate.now());
 					requests.add(req);
 

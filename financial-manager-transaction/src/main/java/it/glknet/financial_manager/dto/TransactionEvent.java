@@ -7,5 +7,6 @@ import java.util.UUID;
 import it.glknet.financial_manager.model.TransactionType;
 
 public record TransactionEvent(UUID id, String description, BigDecimal amount, TransactionType type, UUID categoryId,
-		String userId, LocalDate transactionDate) {
+		UUID userId, LocalDate transactionDate) {
+
 }

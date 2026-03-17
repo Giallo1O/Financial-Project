@@ -11,13 +11,13 @@ import it.glknet.financial_manager.model.Transaction;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
-    List<Transaction> findByUserId(String userId);
+    List<Transaction> findByUserId(UUID userId);
 
     @Query("SELECT t FROM Transaction t WHERE t.userId = :userId " +
            "AND EXTRACT(MONTH FROM t.transactionDate) = :month " +
            "AND EXTRACT(YEAR FROM t.transactionDate) = :year")
     List<Transaction> findByUserIdAndMonthAndYear(
-            @Param("userId") String userId,
+            @Param("userId") UUID userId,
             @Param("month") int month,
             @Param("year") int year);
 }

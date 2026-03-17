@@ -41,7 +41,7 @@ public class Transaction {
 
 	private UUID categoryId;
 
-	private String userId;
+	private UUID userId;
 
 	private LocalDate transactionDate;
 

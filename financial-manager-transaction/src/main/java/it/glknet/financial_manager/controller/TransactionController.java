@@ -46,7 +46,7 @@ public class TransactionController {
 	 */
 	@GetMapping
 	public List<Transaction> getAll(
-			@RequestParam String userId,
+			@RequestParam UUID userId,
 			@RequestParam(required = false) Integer month,
 			@RequestParam(required = false) Integer year) {
 

@@ -35,7 +35,7 @@ public class Category {
 	private String icon; // es. "home-outline" (opzionale per le icone UI)
 
 	@Column(name = "user_id", nullable = false)
-	private String userId; // Fondamentale: ogni utente vede solo le SUE categorie
+	private UUID userId; // Fondamentale: ogni utente vede solo le SUE categorie
 
 	@Column(name = "is_expense", nullable = false, columnDefinition = "boolean default true")
 	@Builder.Default

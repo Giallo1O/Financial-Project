@@ -46,11 +46,11 @@ public class TransactionService {
 		return saved;
 	}
 
-	public List<Transaction> getAllTransactions(String userId) {
+	public List<Transaction> getAllTransactions(UUID userId) {
 		return repository.findByUserId(userId);
 	}
 
-	public List<Transaction> getTransactionsByMonth(String userId, int month, int year) {
+	public List<Transaction> getTransactionsByMonth(UUID userId, int month, int year) {
 		return repository.findByUserIdAndMonthAndYear(userId, month, year);
 	}
 
@@ -62,10 +62,8 @@ public class TransactionService {
 		repository.delete(tx);
 
 		// 3. Crea l'evento e spediscilo su Kafka
-		TransactionDeleteEvent event = new TransactionDeleteEvent(
-				tx.getId(), tx.getAmount(), tx.getType().name(),
-				tx.getCategoryId(), tx.getUserId(),
-				tx.getTransactionDate());
+		TransactionDeleteEvent event = new TransactionDeleteEvent(tx.getId(), tx.getAmount(), tx.getType().name(),
+				tx.getCategoryId(), tx.getUserId(), tx.getTransactionDate());
 		kafkaProducerService.sendTransactionDeleteEvent(event);
 	}
 }
