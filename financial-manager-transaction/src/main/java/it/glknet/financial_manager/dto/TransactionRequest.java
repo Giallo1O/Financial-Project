@@ -4,8 +4,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import org.apache.kafka.common.Uuid;
+
 import it.glknet.financial_manager.model.TransactionType;
 
 public record TransactionRequest(String description, BigDecimal amount, TransactionType type, UUID categoryId,
-		String userId, LocalDate transactionDate) {
+		UUID userId, LocalDate transactionDate) {
+
 }

@@ -25,12 +25,11 @@ public class DashboardService {
 	@Transactional
 	@KafkaListener(topics = "transactions-topic", groupId = "dashboard-group-v2")
 	public void updateStatistics(TransactionEvent event) {
-		log.info(">>> [Kafka] Ricevuto TransactionEvent: userId={}, categoryId={}, type={}, amount={}",
-				event.userId(), event.categoryId(), event.type(), event.amount());
+		log.info(">>> [Kafka] Ricevuto TransactionEvent: userId={}, categoryId={}, type={}, amount={}", event.userId(),
+				event.categoryId(), event.type(), event.amount());
 		// Cerchiamo la categoria nel DB, se non esiste ne creiamo una nuova
-		CategorySummary summary = repository.findByUserIdAndCategoryIdAndMonthAndYear(
-				event.userId(), event.categoryId(), event.transactionDate().getMonthValue(),
-				event.transactionDate().getYear())
+		CategorySummary summary = repository.findByUserIdAndCategoryIdAndMonthAndYear(event.userId(),
+				event.categoryId(), event.transactionDate().getMonthValue(), event.transactionDate().getYear())
 				.orElseGet(() -> {
 					CategorySummary newSummary = new CategorySummary();
 					newSummary.setUserId(event.userId());
@@ -39,7 +38,7 @@ public class DashboardService {
 					newSummary.setYear(event.transactionDate().getYear());
 					newSummary.setTotalAmount(BigDecimal.ZERO);
 					newSummary.setTransactionCount(0L);
-					newSummary.setExpense("USCITA".equalsIgnoreCase(event.type()));
+					newSummary.setExpense(event.type().equals("USCITA"));
 					return newSummary;
 				});
 
@@ -48,8 +47,8 @@ public class DashboardService {
 		summary.setTransactionCount(summary.getTransactionCount() + 1);
 		summary.setLastUpdate(LocalDateTime.now());
 		repository.save(summary);
-		log.info(">>> [Kafka] Statistiche aggiornate ({}) per userId={}, categoryId={}",
-				event.type(), event.userId(), event.categoryId());
+		log.info(">>> [Kafka] Statistiche aggiornate ({}) per userId={}, categoryId={}", event.type(), event.userId(),
+				event.categoryId());
 	}
 
 	@KafkaListener(topics = "transactions-delete-topic", groupId = "dashboard-group-v2")

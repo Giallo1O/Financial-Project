@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-public record TransactionEvent(UUID id, String description, BigDecimal amount, String type, UUID categoryId,
-		UUID userId, LocalDate transactionDate) {
+import it.glknet.financial_manager.model.TransactionType;
+
+public record TransactionEvent(UUID id, String description, BigDecimal amount, TransactionType type, UUID categoryId,
+        UUID userId, LocalDate transactionDate) {
 }

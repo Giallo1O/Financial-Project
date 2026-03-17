@@ -37,6 +37,6 @@ public class KafkaProducerService {
 
 	public void sendCategoryDeleteEvent(CategoryDeleteEvent event) {
 		log.info("Invio evento di ELIMINAZIONE CATEGORIA a Kafka: {}", event);
-		kafkaTemplate.send(CATEGORY_DELETE_TOPIC, event.userId(), event);
+		kafkaTemplate.send(CATEGORY_DELETE_TOPIC, event.userId().toString(), event);
 	}
 }

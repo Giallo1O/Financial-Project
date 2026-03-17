@@ -32,7 +32,7 @@ public class CategoryController {
 
 	// 1. Ottieni tutte le categorie di un utente
 	@GetMapping
-	public ResponseEntity<List<Category>> getUserCategories(@RequestParam String userId) {
+	public ResponseEntity<List<Category>> getUserCategories(@RequestParam UUID userId) {
 		return ResponseEntity.ok(categoryRepository.findByUserId(userId));
 	}
 
