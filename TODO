@@ -1,0 +1,41 @@
+Elenco delle funzionalità da aggiungere:
+
+1. Gestione del Budget (Previsione vs Realtà)
+Al momento vedi quanto spendi, ma non sai se "stai spendendo troppo" rispetto ai tuoi piani.
+
+Budget per categoria: Imposta un tetto massimo mensile per ogni categoria (es. 200€ per "Ristoranti").
+
+Barre di avanzamento: Una visualizzazione che ti mostri quanto manca al limite del budget. Cambia colore (verde → giallo → rosso) man mano che ti avvicini alla soglia.
+
+2. Transazioni Ricorrenti
+Molte spese sono fisse (affitto, Netflix, palestra, assicurazione).
+
+Automazione: Inserisci una funzione che aggiunga automaticamente queste transazioni ogni mese o che ti ricordi di confermarle.
+
+Calendario delle scadenze: Una vista a calendario per vedere quando "usciranno" i soldi, evitando sorprese sul saldo.
+
+3. Analisi e Confronti (Insight)
+I dati sono utili solo se ti permettono di prendere decisioni.
+
+Confronto Mese su Mese: Un grafico che metta a confronto le spese totali (o per categoria) del mese attuale con quello precedente. Stai risparmiando di più o di meno?
+
+Rapporto Spese Fisse vs Variabili: Separare ciò che "devi" pagare da ciò che "vuoi" pagare è fondamentale per capire dove puoi tagliare.
+
+4. Obiettivi di Risparmio (Savings Goals)
+Invece di vedere solo un saldo, potresti voler accantonare soldi per scopi specifici.
+
+Creazione di "Salvadanai": Crea obiettivi come "Vacanze estive" o "Fondo di emergenza".
+
+Tracciamento progressi: Visualizza quanto sei vicino a completare l'obiettivo.
+
+5. Esportazione e Backup
+Visto che i dati sono tuoi, dovresti poterli portare via facilmente.
+
+Export in Excel/PDF: Utile se devi condividere i dati con un commercialista o semplicemente per un archivio offline.
+
+Privacy Mode: Un tasto "occhio" che offusca le cifre (blur) nel caso volessi mostrare il sito a qualcuno senza rivelare il tuo patrimonio esatto.
+
+6. Sistema di Tagging (Oltre le categorie)
+A volte una categoria non basta.
+
+Tag: Se vai in vacanza a Parigi, potresti avere spese in categorie diverse (Cibo, Trasporti, Hotel). Usando il tag "#Parigi2026", potresti vedere il costo totale di quel viaggio specifico indipendentemente dalle categorie.
