@@ -31,14 +31,11 @@ const Dashboard = () => {
 
         // Sort descending
         setTransactions(currentMonthTxs.sort((a, b) => new Date(b.date) - new Date(a.date)));
-        // Filter only EXPENSES for the pie chart
-        const expenseStats = dashboardStats.filter(stat => stat.expense === true);
 
-        // Build id→name map for category pie chart
-        const categoryMap = Object.fromEntries(categories.map(c => [c.id, c.name]));
-        const mappedStats = expenseStats.map(stat => ({
+        // Simple summary: show Total Expenses and Total Income
+        const mappedStats = dashboardStats.map(stat => ({
           ...stat,
-          categoryId: categoryMap[stat.categoryId] || stat.categoryId || '—'
+          name: stat.expense ? 'Spese' : 'Entrate'
         }));
 
         setCategoryStats(mappedStats);

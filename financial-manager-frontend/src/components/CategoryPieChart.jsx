@@ -45,7 +45,7 @@ const CategoryPieChart = ({ categories = [] }) => {
   const data = categories
     .filter((c) => Number(c.totalAmount) > 0)
     .map((c) => ({
-      name: c.categoryId,            // può essere UUID o stringa leggibile (mock)
+      name: c.name,            // ora usiamo 'name' passato dal genitore
       value: Number(c.totalAmount),
       count: c.transactionCount,
     }));
