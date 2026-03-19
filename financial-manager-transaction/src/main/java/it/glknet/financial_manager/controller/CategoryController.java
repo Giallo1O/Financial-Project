@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,7 +44,20 @@ public class CategoryController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
 	}
 
-	// 3. Elimina una categoria
+	// 3. Modifica una categoria esistente
+	@PutMapping("/{id}")
+	public ResponseEntity<Category> updateCategory(@PathVariable UUID id, @RequestBody Category categoryDetails) {
+		return categoryRepository.findById(id).map(category -> {
+			category.setName(categoryDetails.getName());
+			category.setColor(categoryDetails.getColor());
+			category.setIcon(categoryDetails.getIcon());
+			category.setExpense(categoryDetails.isExpense());
+			Category updatedCategory = categoryRepository.save(category);
+			return ResponseEntity.ok(updatedCategory);
+		}).orElse(ResponseEntity.notFound().build());
+	}
+
+	// 4. Elimina una categoria
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
 		categoryRepository.findById(id).ifPresent(category -> {

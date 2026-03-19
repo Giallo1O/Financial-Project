@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, Palette, Type, Check, X } from 'lucide-react';
-import { fetchCategories, createCategory, deleteCategory } from '../api';
+import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-react';
+import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import '../components/Components.css'; // Corrected path
 
 
@@ -13,6 +13,7 @@ const Categories = () => {
   const [isExpense, setIsExpense] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [editingCategory, setEditingCategory] = useState(null);
 
   useEffect(() => {
     loadCategories();
@@ -37,15 +38,42 @@ const Categories = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      await createCategory({ name, color, icon, expense: isExpense });
-      setMessage({ type: 'success', text: 'Category created successfully!' });
+      if (editingCategory) {
+        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense });
+        setMessage({ type: 'success', text: 'Category updated successfully!' });
+        setEditingCategory(null);
+      } else {
+        await createCategory({ name, color, icon, expense: isExpense });
+        setMessage({ type: 'success', text: 'Category created successfully!' });
+      }
       setName('');
+      setColor('#6366f1');
+      setIcon('tag');
+      setIsExpense(true);
       loadCategories(); // Refresh list
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (category) => {
+    setEditingCategory(category);
+    setName(category.name);
+    setColor(category.color || '#6366f1');
+    setIcon(category.icon || 'tag');
+    setIsExpense(category.expense);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancel = () => {
+    setEditingCategory(null);
+    setName('');
+    setColor('#6366f1');
+    setIcon('tag');
+    setIsExpense(true);
+    setMessage({ type: '', text: '' });
   };
 
   const handleDeleteCategory = async (id) => {
@@ -102,32 +130,60 @@ const Categories = () => {
                       {cat.expense ? 'Uscita' : 'Entrata'}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleDeleteCategory(cat.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '4px',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                      e.currentTarget.style.color = 'var(--danger)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = 'var(--text-muted)';
-                    }}
-                    title="Delete Category"
-                  >
-                    <X size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => handleEdit(cat)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
+                        e.currentTarget.style.color = 'var(--primary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
+                      title="Edit Category"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '4px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                        e.currentTarget.style.color = 'var(--danger)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
+                      title="Delete Category"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -137,7 +193,29 @@ const Categories = () => {
         {/* Add Category Form */}
         <section>
           <div className="glass-panel form-card" style={{ padding: '1.5rem' }}>
-            <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>Add New Category</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 className="section-title" style={{ marginBottom: 0 }}>
+                {editingCategory ? 'Edit Category' : 'Add New Category'}
+              </h3>
+              {editingCategory && (
+                <button 
+                  onClick={handleCancel}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: 'var(--text-muted)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px', 
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  Cancel
+                </button>
+              )}
+            </div>
             
             {message.text && (
               <div className={`status-message ${message.type}`} style={{ marginBottom: '1rem', padding: '0.75rem', borderRadius: '8px', fontSize: '0.875rem', backgroundColor: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: message.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
@@ -260,14 +338,14 @@ const Categories = () => {
 
               <button
                 type="submit"
-                className="btn btn-primary"
+                className={`btn ${editingCategory ? 'btn-success' : 'btn-primary'}`}
                 disabled={isSubmitting}
                 style={{ marginTop: '0.5rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
-                {isSubmitting ? 'Creating...' : (
+                {isSubmitting ? (editingCategory ? 'Updating...' : 'Creating...') : (
                   <>
-                    <Plus size={18} />
-                    <span>Create Category</span>
+                    {editingCategory ? <Check size={18} /> : <Plus size={18} />}
+                    <span>{editingCategory ? 'Save Changes' : 'Create Category'}</span>
                   </>
                 )}
               </button>

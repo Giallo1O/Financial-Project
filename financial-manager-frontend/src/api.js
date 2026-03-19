@@ -119,6 +119,21 @@ export async function createCategory(categoryData) {
   return await response.json();
 }
 
+export async function updateCategory(id, categoryData) {
+  const payload = {
+    ...categoryData,
+    userId: getCurrentUserId(),
+  };
+
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  return await response.json();
+}
+
 export async function deleteCategory(id) {
   await authenticatedFetch(`${TRANSACTION_API}/api/categories/${id}`, {
     method: 'DELETE',
