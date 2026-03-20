@@ -1,18 +1,13 @@
 Elenco delle funzionalità da aggiungere:
 
-1. Gestione del Budget (Previsione vs Realtà)
-Al momento vedi quanto spendi, ma non sai se "stai spendendo troppo" rispetto ai tuoi piani.
-
-Barre di avanzamento: Una visualizzazione che ti mostri quanto manca al limite del budget. Cambia colore (verde → giallo → rosso) man mano che ti avvicini alla soglia.
-
-2. Transazioni Ricorrenti
+1. Transazioni Ricorrenti
 Molte spese sono fisse (affitto, Netflix, palestra, assicurazione).
 
 Automazione: Inserisci una funzione che aggiunga automaticamente queste transazioni ogni mese o che ti ricordi di confermarle.
 
 Calendario delle scadenze: Una vista a calendario per vedere quando "usciranno" i soldi, evitando sorprese sul saldo.
 
-3. Analisi e Confronti (Insight)
+2. Analisi e Confronti (Insight)
 I dati sono utili solo se ti permettono di prendere decisioni.
 
 Confronto Mese su Mese: Un grafico che metta a confronto le spese totali (o per categoria) del mese attuale con quello precedente. Stai risparmiando di più o di meno?
