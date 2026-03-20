@@ -220,10 +220,18 @@ export async function parseCsv(file) {
 }
 
 export async function bulkImportTransactions(transactions) {
+  const userId = getCurrentUserId();
+  const payload = transactions.map(t => ({
+    ...t,
+    userId,
+    // Ensure categoryId is a valid UUID or null (not empty string)
+    categoryId: t.categoryId === '' ? null : t.categoryId
+  }));
+
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(transactions),
+    body: JSON.stringify(payload),
   });
   return response;
 }

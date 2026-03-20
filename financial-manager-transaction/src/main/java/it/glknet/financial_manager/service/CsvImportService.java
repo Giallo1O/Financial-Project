@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,32 +32,44 @@ public class CsvImportService {
 
 			for (String[] row : rows) {
 				try {
-					// We apply a basic heuristic parser. If the CSV has Date, Desc, Amount:
-					// Usually: Date (0), Description (1), Amount (2)
-					// (A more sophisticated version would let the user map columns in UI or here)
 					String description = "";
 					BigDecimal amount = BigDecimal.ZERO;
-					TransactionType type = TransactionType.USCITA; // Default
+					TransactionType type = TransactionType.USCITA;
+					LocalDate date = LocalDate.now();
 
-					// Searching for the amount (usually a number with decimals)
 					for (String col : row) {
 						if (col == null || col.isBlank())
 							continue;
 
 						String cleanCol = col.replace("\"", "").trim();
 
-						// Try to parse amount
-						if (isNumeric(cleanCol)) {
-							amount = new BigDecimal(cleanCol.replace(",", "."));
-							if (amount.compareTo(BigDecimal.ZERO) > 0) {
-								type = TransactionType.ENTRATA;
-							} else {
-								type = TransactionType.USCITA;
-								amount = amount.abs();
+						// 1. Check if it's a date first to avoid it being parsed as a number
+						if (isDate(cleanCol)) {
+							LocalDate parsedDate = tryParseDate(cleanCol);
+							if (parsedDate != null) {
+								date = parsedDate;
+								continue;
 							}
-						} else if (!isDate(cleanCol) && description.length() < cleanCol.length()) { // Guess description
-																									// as the longest
-																									// text string
+						}
+
+						// 2. Try to parse amount
+						if (isNumeric(cleanCol)) {
+							try {
+								amount = new BigDecimal(cleanCol.replace(",", "."));
+								if (amount.compareTo(BigDecimal.ZERO) > 0) {
+									type = TransactionType.ENTRATA;
+								} else {
+									type = TransactionType.USCITA;
+									amount = amount.abs();
+								}
+								continue;
+							} catch (Exception e) {
+								// Not a number then
+							}
+						}
+
+						// 3. Guess description as the longest surviving string
+						if (description.length() < cleanCol.length()) {
 							description = cleanCol;
 						}
 					}
@@ -68,11 +79,10 @@ public class CsvImportService {
 						continue;
 					}
 
+					// We leave categoryId and userId as null so the frontend can fill them
 					TransactionRequest req = new TransactionRequest(
 							description.isEmpty() ? "Imported Transaction" : description, amount, type,
-							UUID.randomUUID(),
-							UUID.randomUUID(),
-							LocalDate.now());
+							null, null, date);
 					requests.add(req);
 
 				} catch (Exception e) {
@@ -88,16 +98,35 @@ public class CsvImportService {
 		return requests;
 	}
 
+	private LocalDate tryParseDate(String str) {
+		try {
+			// Basic support for common formats: yyyy-MM-dd, dd/MM/yyyy, dd-MM-yyyy
+			if (str.contains("-")) {
+				String[] parts = str.split("-");
+				if (parts[0].length() == 4) {
+					return LocalDate.parse(str); // yyyy-MM-dd
+				} else {
+					return LocalDate.of(Integer.parseInt(parts[2]), Integer.parseInt(parts[1]),
+							Integer.parseInt(parts[0]));
+				}
+			} else if (str.contains("/")) {
+				String[] parts = str.split("/");
+				return LocalDate.of(Integer.parseInt(parts[2]), Integer.parseInt(parts[1]), Integer.parseInt(parts[0]));
+			}
+		} catch (Exception e) {
+			// ignore
+		}
+		return null;
+	}
+
 	private boolean isNumeric(String str) {
 		if (str == null || str.isBlank())
 			return false;
-		String clean = str.replace(".", "").replace(",", "").replace("-", "").trim();
-		return clean.chars().allMatch(Character::isDigit);
+		// Regex to check if it's a number (including decimals and signs)
+		return str.matches("^-?\\d+([.,]\\d+)?$");
 	}
 
 	private boolean isDate(String str) {
-		// A fast basic check if string looks like a date format (dd/mm/yyyy or
-		// yyyy-mm-dd)
 		return str.matches("^\\d{2,4}[/-]\\d{2}[/-]\\d{2,4}.*");
 	}
 }

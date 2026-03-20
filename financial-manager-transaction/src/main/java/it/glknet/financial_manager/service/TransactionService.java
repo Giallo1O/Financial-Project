@@ -26,9 +26,11 @@ public class TransactionService {
 
 	@Transactional
 	public Transaction createTransaction(TransactionRequest request) {
-		// Controllo se esiste la categoria
-		categoryRepository.findById(request.categoryId())
-				.orElseThrow(() -> new IllegalArgumentException("Errore: La categoria inserita non esiste!"));
+		// Controllo se esiste la categoria (se fornita)
+		if (request.categoryId() != null) {
+			categoryRepository.findById(request.categoryId())
+					.orElseThrow(() -> new IllegalArgumentException("Errore: La categoria inserita non esiste!"));
+		}
 
 		// 1. Salvataggio su DB
 		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
