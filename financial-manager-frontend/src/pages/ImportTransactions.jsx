@@ -12,6 +12,9 @@ import {
   List
 } from 'lucide-react';
 import { fetchCategories, parseCsv, bulkImportTransactions } from '../api';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format, parseISO } from 'date-fns';
 import './ImportTransactions.css';
 
 const STEPS = [
@@ -85,7 +88,8 @@ const ImportTransactions = () => {
       setTransactions(data.map(t => ({
         ...t, 
         tempId: crypto.randomUUID(),
-        type: t.type || 'USCITA'
+        type: t.type || 'USCITA',
+        transactionDate: t.transactionDate ? parseISO(t.transactionDate) : new Date()
       })));
       setCurrentStep(2);
       setMessage({ text: '', type: '' });
@@ -118,8 +122,9 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      const payload = transactions.map(({ tempId, ...rest }) => ({
+      const payload = transactions.map(({ tempId, transactionDate, ...rest }) => ({
         ...rest,
+        transactionDate: format(transactionDate, 'yyyy-MM-dd'),
         type: rest.type.toUpperCase()
       }));
       
@@ -245,6 +250,7 @@ const ImportTransactions = () => {
                     <th>Description</th>
                     <th style={{ width: '120px' }}>Amount</th>
                     <th style={{ width: '130px' }}>Type</th>
+                    <th style={{ width: '150px' }}>Date</th>
                     <th style={{ width: '180px' }}>Category</th>
                     <th style={{ width: '50px' }}></th>
                   </tr>
