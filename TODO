@@ -3,8 +3,6 @@ Elenco delle funzionalità da aggiungere:
 1. Gestione del Budget (Previsione vs Realtà)
 Al momento vedi quanto spendi, ma non sai se "stai spendendo troppo" rispetto ai tuoi piani.
 
-Budget per categoria: Imposta un tetto massimo mensile per ogni categoria (es. 200€ per "Ristoranti").
-
 Barre di avanzamento: Una visualizzazione che ti mostri quanto manca al limite del budget. Cambia colore (verde → giallo → rosso) man mano che ti avvicini alla soglia.
 
 2. Transazioni Ricorrenti
