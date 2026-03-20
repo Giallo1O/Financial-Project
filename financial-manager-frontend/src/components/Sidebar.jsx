@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet, Tag, Upload } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet, Tag, Upload, PiggyBank } from 'lucide-react';
 import { removeAuth, getUserInfo } from '../auth';
 import './Sidebar.css';
 
@@ -37,6 +37,11 @@ const Sidebar = () => {
         <NavLink to="/analytics" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <BarChart3 size={20} />
           <span>Analytics</span>
+        </NavLink>
+        
+        <NavLink to="/budgets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <PiggyBank size={20} />
+          <span>Budgets</span>
         </NavLink>
 
         <NavLink to="/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>

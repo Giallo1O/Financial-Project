@@ -103,19 +103,24 @@ const Dashboard = () => {
       ) : (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(350px, 1fr) 2fr',
+            display: 'flex',
+            flexDirection: 'column',
             gap: '1.5rem',
-            alignItems: 'start',
           }}
         >
-          {/* Left — cash flow summary */}
+          {/* Top — cash flow summary (Full Width) */}
           <section>
             <AccountSummary transactions={transactions} />
           </section>
 
-          {/* Right — charts */}
-          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          {/* Bottom — charts (Two Columns) */}
+          <section
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+              gap: '1.5rem',
+            }}
+          >
             <CategoryPieChart 
               data={incomeData} 
               title="Entrate per Categoria" 
