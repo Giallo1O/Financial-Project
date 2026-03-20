@@ -28,20 +28,24 @@ const Sidebar = () => {
           <LayoutDashboard size={20} />
           <span>Dashboard</span>
         </NavLink>
-        
+
         <NavLink to="/transactions" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <ArrowLeftRight size={20} />
           <span>Transactions</span>
         </NavLink>
-        
+
         <NavLink to="/analytics" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <BarChart3 size={20} />
           <span>Analytics</span>
         </NavLink>
-        
+
         <NavLink to="/budgets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <PiggyBank size={20} />
           <span>Budgets</span>
+        </NavLink>
+
+        <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <span>Comparisons</span>
         </NavLink>
 
         <NavLink to="/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>

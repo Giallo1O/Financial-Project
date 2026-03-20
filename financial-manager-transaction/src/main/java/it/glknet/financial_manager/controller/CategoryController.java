@@ -53,6 +53,10 @@ public class CategoryController {
 			category.setIcon(categoryDetails.getIcon());
 			category.setExpense(categoryDetails.isExpense());
 			category.setBudget(categoryDetails.getBudget());
+			category.getTags().clear();
+			if (categoryDetails.getTags() != null) {
+				category.getTags().addAll(categoryDetails.getTags());
+			}
 			Category updatedCategory = categoryRepository.save(category);
 			return ResponseEntity.ok(updatedCategory);
 		}).orElse(ResponseEntity.notFound().build());

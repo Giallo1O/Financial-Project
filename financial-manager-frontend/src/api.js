@@ -87,6 +87,7 @@ function mapTransactions(list, categoryMap) {
       categoryId: t.categoryId,
       category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
       categoryColor: categoryInfo ? categoryInfo.color : '#6b7280', // default gray
+      categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
       description: t.description,
       date: t.transactionDate || '',
     };
@@ -197,6 +198,7 @@ export async function createTransaction(transactionData) {
     categoryId: t.categoryId,
     category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
     categoryColor: categoryInfo ? categoryInfo.color : '#6b7280',
+    categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
     description: t.description,
     date: t.transactionDate || new Date().toISOString().split('T')[0],
   };

@@ -2,7 +2,10 @@ package it.glknet.financial_manager.model;
 
 import java.util.UUID;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,6 +16,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "categories")
@@ -43,4 +48,10 @@ public class Category {
 
 	@Builder.Default
 	private java.math.BigDecimal budget = java.math.BigDecimal.ZERO;
+
+	@ElementCollection
+	@CollectionTable(name = "category_tags", joinColumns = @JoinColumn(name = "category_id"))
+	@Column(name = "tag")
+	@Builder.Default
+	private Set<String> tags = new HashSet<>();
 }

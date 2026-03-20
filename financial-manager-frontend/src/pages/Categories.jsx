@@ -15,6 +15,8 @@ const Categories = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [editingCategory, setEditingCategory] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     loadCategories();
@@ -39,11 +41,11 @@ const Categories = () => {
     setMessage({ type: '', text: '' });
     try {
       if (editingCategory) {
-        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense, budget: Number(budget) });
+        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense, budget: Number(budget), tags });
         setMessage({ type: 'success', text: 'Category updated successfully!' });
         setEditingCategory(null);
       } else {
-        await createCategory({ name, color, icon, expense: isExpense, budget: Number(budget) });
+        await createCategory({ name, color, icon, expense: isExpense, budget: Number(budget), tags });
         setMessage({ type: 'success', text: 'Category created successfully!' });
       }
       setName('');
@@ -51,6 +53,7 @@ const Categories = () => {
       setIcon('tag');
       setIsExpense(true);
       setBudget('');
+      setTags([]);
       loadCategories(); // Refresh list
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -66,6 +69,7 @@ const Categories = () => {
     setIcon(category.icon || 'tag');
     setIsExpense(category.expense);
     setBudget(category.budget || '');
+    setTags(category.tags || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -76,7 +80,20 @@ const Categories = () => {
     setIcon('tag');
     setIsExpense(true);
     setBudget('');
+    setTags([]);
     setMessage({ type: '', text: '' });
+  };
+
+  const handleAddTag = (e) => {
+    e.preventDefault();
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(t => t !== tagToRemove));
   };
 
   const handleDeleteCategory = async (id) => {
@@ -133,6 +150,22 @@ const Categories = () => {
                       {cat.expense ? 'Uscita' : 'Entrata'}
                       {cat.budget > 0 && ` • €${cat.budget}`}
                     </span>
+                    {cat.tags && cat.tags.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                        {cat.tags.map(tag => (
+                          <span key={tag} style={{ 
+                            fontSize: '0.6rem', 
+                            padding: '1px 6px', 
+                            borderRadius: '10px', 
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'var(--text-muted)'
+                          }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '4px' }}>
                     <button
@@ -342,15 +375,64 @@ const Categories = () => {
               </div>
 
               <div className="form-group">
-                <label>Icon Identifier (string)</label>
+                <label>Icona (Lucide ID)</label>
                 <div className="input-wrapper">
-                  <Tag size={18} className="input-icon" />
+                  <Palette size={18} className="input-icon" />
                   <input
                     type="text"
                     placeholder="e.g. briefcase, shopping-cart..."
                     value={icon}
                     onChange={(e) => setIcon(e.target.value)}
                   />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Tag della categoria</label>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <div className="input-wrapper" style={{ flex: 1 }}>
+                    <Tag size={18} className="input-icon" />
+                    <input
+                      type="text"
+                      placeholder="Aggiungi tag..."
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddTag(e);
+                        }
+                      }}
+                    />
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={handleAddTag}
+                    className="btn btn-primary"
+                    style={{ padding: '0 1rem', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {tags.map(tag => (
+                    <div key={tag} className="tag-chip" style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px', 
+                      backgroundColor: 'rgba(99, 102, 241, 0.2)', 
+                      padding: '4px 10px', 
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      border: '1px solid var(--primary)'
+                    }}>
+                      {tag}
+                      <X 
+                        size={14} 
+                        style={{ cursor: 'pointer' }} 
+                        onClick={() => handleRemoveTag(tag)} 
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 

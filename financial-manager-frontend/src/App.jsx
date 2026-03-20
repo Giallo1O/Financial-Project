@@ -5,6 +5,7 @@ import Transactions from './pages/Transactions';
 import Analytics from './pages/Analytics';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
+import Comparisons from './pages/Comparisons';
 import ImportTransactions from './pages/ImportTransactions';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -22,6 +23,7 @@ function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/comparisons" element={<Comparisons />} />
           <Route path="/import" element={<ImportTransactions />} />
         </Route>
 
