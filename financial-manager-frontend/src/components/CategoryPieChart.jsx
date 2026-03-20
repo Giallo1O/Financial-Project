@@ -40,16 +40,12 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
   );
 };
 
-const CategoryPieChart = ({ categories = [] }) => {
-  // Filtra categorie con importo > 0 e costruisci i dati per recharts
-  const data = categories
-    .filter((c) => Number(c.totalAmount) > 0)
-    .map((c) => ({
-      name: c.name,            // ora usiamo 'name' passato dal genitore
-      value: Number(c.totalAmount),
-      count: c.transactionCount,
-    }));
-
+const CategoryPieChart = ({ 
+  data = [], 
+  title = "Spese per Categoria", 
+  subtitle = "Distribuzione delle uscite",
+  totalColor = "var(--danger)" 
+}) => {
   const total = data.reduce((acc, d) => acc + d.value, 0);
 
   const CustomTooltip = ({ active, payload }) => {
@@ -72,9 +68,6 @@ const CategoryPieChart = ({ categories = [] }) => {
           </p>
           <p style={{ margin: '0.1rem 0' }}>
             Importo: <strong>{formatCurrency(item.value)}</strong>
-          </p>
-          <p style={{ margin: '0.1rem 0', color: 'var(--text-muted)' }}>
-            Transazioni: {item.payload.count}
           </p>
           <p style={{ margin: '0.1rem 0', color: 'var(--text-muted)' }}>
             Quota: {total > 0 ? ((item.value / total) * 100).toFixed(1) : 0}%
@@ -105,9 +98,9 @@ const CategoryPieChart = ({ categories = [] }) => {
         </div>
         <div>
           <h3 className="section-title" style={{ marginBottom: '0.1rem' }}>
-            Spese per Categoria
+            {title}
           </h3>
-          <p className="text-muted text-sm">Distribuzione delle uscite per categoria</p>
+          <p className="text-muted text-sm">{subtitle}</p>
         </div>
       </div>
 
@@ -124,18 +117,18 @@ const CategoryPieChart = ({ categories = [] }) => {
           }}
         >
           <Tag size={40} opacity={0.3} />
-          <p style={{ fontSize: '0.95rem' }}>Nessuna categoria trovata</p>
+          <p style={{ fontSize: '0.95rem' }}>Nessun dato per questo mese</p>
         </div>
       ) : (
         <>
           {/* Totale */}
           <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-            <span className="text-muted text-sm">Totale uscite</span>
+            <span className="text-muted text-sm">Totale</span>
             <p
               style={{
                 fontSize: '1.6rem',
                 fontWeight: 700,
-                color: 'var(--danger)',
+                color: totalColor,
                 lineHeight: 1.2,
               }}
             >

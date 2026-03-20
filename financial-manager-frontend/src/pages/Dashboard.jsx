@@ -8,7 +8,7 @@ import { fetchTransactions, fetchDashboardStats, fetchCategories } from '../api'
 const Dashboard = () => {
   const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
-  const [categoryStats, setCategoryStats] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,9 +18,8 @@ const Dashboard = () => {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        const [txs, dashboardStats, categories] = await Promise.all([
+        const [txs, cats] = await Promise.all([
           fetchTransactions(),
-          fetchDashboardStats({ month: currentMonth + 1, year: currentYear }),
           fetchCategories(),
         ]);
 
@@ -29,18 +28,10 @@ const Dashboard = () => {
           return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
         });
 
+        setCategories(cats);
         // Sort descending
         setTransactions(currentMonthTxs.sort((a, b) => new Date(b.date) - new Date(a.date)));
-
-        // Simple summary: show Total Expenses and Total Income
-        const mappedStats = dashboardStats.map(stat => ({
-          ...stat,
-          name: stat.expense ? 'Spese' : 'Entrate'
-        }));
-
-        setCategoryStats(mappedStats);
       } catch (err) {
-        // Unexpected error loading dashboard data (e.g. backend down)
         console.error('Unexpected error loading dashboard data', err);
       } finally {
         setLoading(false);
@@ -49,9 +40,33 @@ const Dashboard = () => {
     loadData();
   }, []);
 
+  // Helper to aggregate stats by category
+  const getCategoryData = (type) => {
+    const filteredTxs = transactions.filter(t => t.type === type);
+    const totals = {};
+
+    filteredTxs.forEach(tx => {
+      if (!totals[tx.categoryId]) {
+        totals[tx.categoryId] = 0;
+      }
+      totals[tx.categoryId] += tx.amount;
+    });
+
+    return Object.keys(totals).map(catId => {
+      const category = categories.find(c => c.id === catId);
+      return {
+        name: category ? category.name : 'Unknown',
+        value: totals[catId],
+        color: category ? category.color : '#cbd5e1'
+      };
+    }).sort((a, b) => b.value - a.value);
+  };
+
+  const expenseData = getCategoryData('uscita');
+  const incomeData = getCategoryData('entrata');
+
   return (
     <div className="dashboard-layout" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-
       <header className="dashboard-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{
@@ -84,13 +99,12 @@ const Dashboard = () => {
           />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           <h2>Loading portfolio data...</h2>
-          <p>Connecting to backend services</p>
         </div>
       ) : (
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: 'minmax(350px, 1fr) 2fr',
             gap: '1.5rem',
             alignItems: 'start',
           }}
@@ -100,13 +114,23 @@ const Dashboard = () => {
             <AccountSummary transactions={transactions} />
           </section>
 
-          {/* Right — categories breakdown */}
-          <section>
-            <CategoryPieChart categories={categoryStats} />
+          {/* Right — charts */}
+          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <CategoryPieChart 
+              data={incomeData} 
+              title="Entrate per Categoria" 
+              subtitle="Riepilogo delle entrate mensili"
+              totalColor="var(--success)"
+            />
+            <CategoryPieChart 
+              data={expenseData} 
+              title="Spese per Categoria" 
+              subtitle="Riepilogo delle uscite mensili"
+              totalColor="var(--danger)"
+            />
           </section>
         </div>
       )}
-
     </div>
   );
 };
