@@ -11,6 +11,7 @@ const Categories = () => {
   const [color, setColor] = useState('#6366f1');
   const [icon, setIcon] = useState('tag');
   const [isExpense, setIsExpense] = useState(true);
+  const [budget, setBudget] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [editingCategory, setEditingCategory] = useState(null);
@@ -36,20 +37,20 @@ const Categories = () => {
 
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
-
     try {
       if (editingCategory) {
-        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense });
+        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense, budget: Number(budget) });
         setMessage({ type: 'success', text: 'Category updated successfully!' });
         setEditingCategory(null);
       } else {
-        await createCategory({ name, color, icon, expense: isExpense });
+        await createCategory({ name, color, icon, expense: isExpense, budget: Number(budget) });
         setMessage({ type: 'success', text: 'Category created successfully!' });
       }
       setName('');
       setColor('#6366f1');
       setIcon('tag');
       setIsExpense(true);
+      setBudget('');
       loadCategories(); // Refresh list
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
@@ -64,6 +65,7 @@ const Categories = () => {
     setColor(category.color || '#6366f1');
     setIcon(category.icon || 'tag');
     setIsExpense(category.expense);
+    setBudget(category.budget || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -73,6 +75,7 @@ const Categories = () => {
     setColor('#6366f1');
     setIcon('tag');
     setIsExpense(true);
+    setBudget('');
     setMessage({ type: '', text: '' });
   };
 
@@ -128,6 +131,7 @@ const Categories = () => {
                     <span style={{ fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.name}</span>
                     <span style={{ fontSize: '0.7rem', color: cat.expense ? 'var(--danger)' : 'var(--success)', opacity: 0.8 }}>
                       {cat.expense ? 'Uscita' : 'Entrata'}
+                      {cat.budget > 0 && ` • €${cat.budget}`}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '4px' }}>
@@ -320,6 +324,20 @@ const Categories = () => {
                   >
                     Entrata
                   </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Budget Mensile (opzionale)</label>
+                <div className="input-wrapper">
+                  <span className="input-icon">€</span>
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    step="0.01"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                  />
                 </div>
               </div>
 

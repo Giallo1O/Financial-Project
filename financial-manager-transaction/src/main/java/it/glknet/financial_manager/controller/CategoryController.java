@@ -52,6 +52,7 @@ public class CategoryController {
 			category.setColor(categoryDetails.getColor());
 			category.setIcon(categoryDetails.getIcon());
 			category.setExpense(categoryDetails.isExpense());
+			category.setBudget(categoryDetails.getBudget());
 			Category updatedCategory = categoryRepository.save(category);
 			return ResponseEntity.ok(updatedCategory);
 		}).orElse(ResponseEntity.notFound().build());

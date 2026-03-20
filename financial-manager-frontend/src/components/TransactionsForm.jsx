@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MinusCircle, Tag, Calendar, FileText, Euro } from 'lucide-react';
 import { fetchCategories } from '../api';
-import DatePicker from 'react-datepicker';
+import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
+import { it } from 'date-fns/locale/it';
 import './Components.css';
+
+registerLocale('it', it);
 
 const TransactionsForm = ({ onAddTransaction }) => {
   const [activeTab, setActiveTab] = useState('uscita'); // 'uscita' | 'entrata'
@@ -113,6 +116,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
                 selected={date}
                 onChange={(date) => setDate(date)}
                 dateFormat="dd/MM/yyyy"
+                locale="it"
                 className="form-input date-input"
                 required
               />

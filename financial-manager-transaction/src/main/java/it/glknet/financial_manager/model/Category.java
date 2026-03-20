@@ -40,4 +40,7 @@ public class Category {
 	@Column(name = "is_expense", nullable = false, columnDefinition = "boolean default true")
 	@Builder.Default
 	private boolean expense = true;
+
+	@Builder.Default
+	private java.math.BigDecimal budget = java.math.BigDecimal.ZERO;
 }

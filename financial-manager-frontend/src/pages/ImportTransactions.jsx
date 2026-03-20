@@ -12,10 +12,13 @@ import {
   List
 } from 'lucide-react';
 import { fetchCategories, parseCsv, bulkImportTransactions } from '../api';
-import DatePicker from 'react-datepicker';
+import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parseISO } from 'date-fns';
+import { it } from 'date-fns/locale/it';
 import './ImportTransactions.css';
+
+registerLocale('it', it);
 
 const STEPS = [
   { id: 1, label: 'Upload', icon: Upload },
@@ -284,6 +287,16 @@ const ImportTransactions = () => {
                           <option value="USCITA">Expense</option>
                           <option value="ENTRATA">Income</option>
                         </select>
+                      </td>
+                      <td>
+                        <DatePicker
+                          selected={t.transactionDate}
+                          onChange={(date) => handleRowChange(t.tempId, 'transactionDate', date)}
+                          dateFormat="dd/MM/yyyy"
+                          locale="it"
+                          className="form-input"
+                          required
+                        />
                       </td>
                       <td>
                         <select 
