@@ -107,6 +107,7 @@ export async function fetchCategories() {
 export async function createCategory(categoryData) {
   const payload = {
     ...categoryData,
+    budget: categoryData.budget ? Number(categoryData.budget) : 0,
     userId: getCurrentUserId(),
   };
 
@@ -122,6 +123,7 @@ export async function createCategory(categoryData) {
 export async function updateCategory(id, categoryData) {
   const payload = {
     ...categoryData,
+    budget: categoryData.budget ? Number(categoryData.budget) : 0,
     userId: getCurrentUserId(),
   };
 
