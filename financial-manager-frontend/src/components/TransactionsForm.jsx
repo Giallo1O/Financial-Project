@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MinusCircle, Tag, Calendar, FileText, Euro } from 'lucide-react';
 import { fetchCategories } from '../api';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format } from 'date-fns';
 import './Components.css';
 
 const TransactionsForm = ({ onAddTransaction }) => {
   const [activeTab, setActiveTab] = useState('uscita'); // 'uscita' | 'entrata'
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date());
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
@@ -26,7 +29,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
       type: activeTab,
       amount: parseFloat(amount),
       categoryId,
-      date,
+      date: format(date, 'yyyy-MM-dd'),
       description,
     });
 
@@ -104,12 +107,13 @@ const TransactionsForm = ({ onAddTransaction }) => {
 
           <div className="input-group half-width">
             <label>Data</label>
-            <div className="input-wrapper">
+            <div className="input-wrapper date-picker-wrapper">
               <Calendar size={18} className="input-icon" />
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+              <DatePicker
+                selected={date}
+                onChange={(date) => setDate(date)}
+                dateFormat="dd/MM/yyyy"
+                className="form-input date-input"
                 required
               />
             </div>

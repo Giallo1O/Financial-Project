@@ -88,7 +88,7 @@ function mapTransactions(list, categoryMap) {
       category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
       categoryColor: categoryInfo ? categoryInfo.color : '#6b7280', // default gray
       description: t.description,
-      date: t.createdAt ? t.createdAt.split('T')[0] : '',
+      date: t.transactionDate || '',
     };
   });
 }
@@ -196,7 +196,7 @@ export async function createTransaction(transactionData) {
     category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
     categoryColor: categoryInfo ? categoryInfo.color : '#6b7280',
     description: t.description,
-    date: t.createdAt ? t.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+    date: t.transactionDate || new Date().toISOString().split('T')[0],
   };
 }
 
