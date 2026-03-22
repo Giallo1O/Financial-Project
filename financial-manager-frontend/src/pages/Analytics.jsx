@@ -288,7 +288,7 @@ const Analytics = () => {
                           />
                           <YAxis tick={{fill: 'var(--text-muted)'}} axisLine={{stroke: 'var(--border-glass)'}} tickFormatter={(value) => `€${value}`} />
                           <Tooltip 
-                            cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                            cursor={{fill: 'rgba(197, 160, 40, 0.08)'}}
                             contentStyle={{ 
                               backgroundColor: 'var(--bg-secondary)', 
                               border: '1px solid var(--border-glass)',

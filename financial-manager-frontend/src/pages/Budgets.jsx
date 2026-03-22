@@ -146,7 +146,7 @@ const Budgets = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-           <div style={{ width: '100%', height: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+           <div style={{ width: '100%', height: '12px', background: 'rgba(197, 160, 40, 0.08)', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
               <div style={{ 
                 width: `${Math.min(budgetStats.totalPercent, 100)}%`, 
                 height: '100%', 
@@ -223,7 +223,7 @@ const Budgets = () => {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid rgba(197, 160, 40, 0.1)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="text-muted text-xs" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Rimanente</span>
                   <span style={{ 

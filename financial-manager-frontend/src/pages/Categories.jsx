@@ -133,7 +133,7 @@ const Categories = () => {
                     gap: '0.75rem', 
                     padding: '0.75rem', 
                     borderRadius: 'var(--radius-lg)',
-                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    backgroundColor: 'rgba(197, 160, 40, 0.08)',
                     border: `1px solid ${cat.color}44`
                   }}
                 >
@@ -157,8 +157,8 @@ const Categories = () => {
                             fontSize: '0.6rem', 
                             padding: '1px 6px', 
                             borderRadius: '10px', 
-                            backgroundColor: 'rgba(255,255,255,0.1)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            backgroundColor: 'rgba(197, 160, 40, 0.12)',
+                            border: '1px solid rgba(197, 160, 40, 0.2)',
                             color: 'var(--text-muted)'
                           }}>
                             {tag}
@@ -183,8 +183,8 @@ const Categories = () => {
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(99, 102, 241, 0.1)';
-                        e.currentTarget.style.color = 'var(--primary)';
+                        e.currentTarget.style.backgroundColor = 'rgba(197, 160, 40, 0.15)';
+                        e.currentTarget.style.color = 'var(--accent-secondary)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.backgroundColor = 'transparent';
@@ -332,7 +332,7 @@ const Categories = () => {
                       height: '100%',
                       borderRadius: '50%',
                       border: '1px solid var(--border-glass)',
-                      background: 'rgba(255,255,255,0.05)'
+                      background: 'rgba(197, 160, 40, 0.1)'
                     }} />
                   </div>
                 </div>

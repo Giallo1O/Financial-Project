@@ -92,7 +92,7 @@ const DailyCategoryChart = ({ transactions, currentDate, viewType }) => {
               data={chartData}
               margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(197, 160, 40, 0.12)" vertical={false} />
               <XAxis 
                 dataKey="day" 
                 tick={{fill: 'var(--text-muted)', fontSize: 12}} 
@@ -105,7 +105,7 @@ const DailyCategoryChart = ({ transactions, currentDate, viewType }) => {
                 tickFormatter={(value) => `€${value}`} 
               />
               <Tooltip 
-                cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                cursor={{fill: 'rgba(197, 160, 40, 0.08)'}}
                 contentStyle={{ 
                   backgroundColor: 'var(--bg-secondary)', 
                   border: '1px solid var(--border-glass)',
