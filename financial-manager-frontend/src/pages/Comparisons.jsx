@@ -21,7 +21,7 @@ const Comparisons = () => {
 
   // Trends State
   const [trendCategory, setTrendCategory] = useState('all');
-  const [trendMonths, setTrendMonths] = useState(6);
+  const [trendMonths] = useState(6);
 
   useEffect(() => {
     const loadData = async () => {
@@ -143,6 +143,7 @@ const Comparisons = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: 'var(--shadow-glow)'
           }}>
+            <GitCompare size={24} color="white" />
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Confronti</h1>
@@ -186,14 +187,14 @@ const Comparisons = () => {
                 type="month"
                 value={getMonthKey(monthB)}
                 onChange={(e) => setMonthB(new Date(e.target.value))}
-                className="input-field" style={{ width: 'auto', padding: '0.5rem' }}
+                className="input-month" style={{ width: 'auto' }}
               />
               <span className="text-muted">vs</span>
               <input
                 type="month"
                 value={getMonthKey(monthA)}
                 onChange={(e) => setMonthA(new Date(e.target.value))}
-                className="input-field" style={{ width: 'auto', padding: '0.5rem' }}
+                className="input-month" style={{ width: 'auto' }}
               />
             </div>
           </div>
@@ -205,7 +206,9 @@ const Comparisons = () => {
                 <XAxis dataKey="name" stroke="var(--text-muted)" />
                 <YAxis stroke="var(--text-muted)" tickFormatter={(v) => `€${v}`} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '12px', boxShadow: 'var(--shadow-glass)' }}
+                  itemStyle={{ color: 'var(--text-primary)' }}
+                  cursor={{ fill: 'rgba(158, 85, 69, 0.15)' }}
                   formatter={(v) => `€${v.toLocaleString('it-IT')}`}
                 />
                 <Legend />
@@ -226,7 +229,7 @@ const Comparisons = () => {
               <select
                 value={trendCategory}
                 onChange={(e) => setTrendCategory(e.target.value)}
-                className="input-field" style={{ width: 'auto' }}
+                className="custom-select" style={{ width: 'auto' }}
               >
                 <option value="all">Tutte le categorie</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -247,7 +250,9 @@ const Comparisons = () => {
                 <XAxis dataKey="label" stroke="var(--text-muted)" />
                 <YAxis stroke="var(--text-muted)" tickFormatter={(v) => `€${v}`} />
                 <Tooltip
-                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '12px', boxShadow: 'var(--shadow-glass)' }}
+                  itemStyle={{ color: 'var(--text-primary)' }}
+                  cursor={{ stroke: 'var(--accent-primary)', strokeWidth: 1, strokeDasharray: '5 5' }}
                   formatter={(v) => `€${v.toLocaleString('it-IT')}`}
                 />
                 <Area type="monotone" dataKey="expense" name="Uscite" stroke="var(--danger)" fillOpacity={1} fill="url(#colorExpense)" />
@@ -313,14 +318,15 @@ const Comparisons = () => {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .input-field {
+        .input-month {
           background: rgba(255,255,255,0.05);
           border: 1px solid var(--border-glass);
           color: white;
           border-radius: 8px;
           outline: none;
+          padding: 0.5rem;
         }
-        .input-field:focus {
+        .input-month:focus {
           border-color: var(--accent-primary);
         }
       `}</style>

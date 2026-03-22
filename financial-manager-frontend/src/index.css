@@ -133,21 +133,32 @@ input,
 select,
 textarea {
   width: 100%;
-  background: rgba(28, 22, 20, 0.6);
+  background: rgba(28, 22, 20, 0.4);
   border: 1px solid var(--border-glass);
   color: var(--text-primary);
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.25rem;
   border-radius: var(--radius-md);
   outline: none;
   font-family: inherit;
-  transition: var(--transition-fast);
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+input:hover,
+select:hover,
+textarea:hover {
+  background: rgba(45, 36, 33, 0.6);
+  border-color: rgba(197, 160, 40, 0.3);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
+  background: rgba(45, 36, 33, 0.8);
   border-color: var(--accent-secondary);
-  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 4px rgba(197, 160, 40, 0.1);
+  transform: translateY(-1px);
 }
 
 .input-wrapper {
@@ -172,11 +183,17 @@ textarea:focus {
 
 select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23c5a028' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
-  background-size: 1.2rem;
-  padding-right: 2.5rem;
+  background-size: 1.1rem;
+  padding-right: 3rem !important;
+}
+
+option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 1rem;
 }
 
 /* Buttons */

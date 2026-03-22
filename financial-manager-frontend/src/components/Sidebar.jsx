@@ -6,7 +6,6 @@ import './Sidebar.css';
 
 const Sidebar = () => {
   const navigate = useNavigate();
-  const userInfo = getUserInfo();
 
   const handleLogout = () => {
     removeAuth();
@@ -45,6 +44,7 @@ const Sidebar = () => {
         </NavLink>
 
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <GitCompare size={20} />
           <span>Comparisons</span>
         </NavLink>
 
