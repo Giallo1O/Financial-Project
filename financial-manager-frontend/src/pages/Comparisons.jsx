@@ -143,7 +143,7 @@ const Comparisons = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: 'var(--shadow-glow)'
           }}>
-            <GitCompare size={24} color="white" />
+            <BarChart3 size={24} color="white" />
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Confronti</h1>

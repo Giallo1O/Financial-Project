@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet, Tag, Upload, PiggyBank } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet, Tag, Upload, PiggyBank, TrendingUp } from 'lucide-react';
 import { removeAuth, getUserInfo } from '../auth';
 import './Sidebar.css';
 
@@ -44,7 +44,7 @@ const Sidebar = () => {
         </NavLink>
 
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <GitCompare size={20} />
+          <TrendingUp size={20} />
           <span>Comparisons</span>
         </NavLink>
 
