@@ -1,16 +1,22 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet, Tag, Upload, PiggyBank, TrendingUp } from 'lucide-react';
+import {
+  LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet,
+  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock
+} from 'lucide-react';
 import { removeAuth, getUserInfo } from '../auth';
+import { usePrivacy } from '../context/PrivacyContext';
 import './Sidebar.css';
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const { privacyMode, togglePrivacyMode } = usePrivacy();
 
   const handleLogout = () => {
     removeAuth();
     navigate('/login');
   };
+
 
 
   return (
@@ -43,6 +49,16 @@ const Sidebar = () => {
           <span>Budgets</span>
         </NavLink>
 
+        <NavLink to="/recurring" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <CalendarClock size={20} />
+          <span>Ricorrenti</span>
+        </NavLink>
+
+        <NavLink to="/goals" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <Target size={20} />
+          <span>Salvadanaio</span>
+        </NavLink>
+
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <TrendingUp size={20} />
           <span>Comparisons</span>
@@ -61,6 +77,15 @@ const Sidebar = () => {
 
 
       <div className="sidebar-footer">
+        <button
+          onClick={togglePrivacyMode}
+          className={`privacy-toggle-btn full-width ${privacyMode ? 'active' : ''}`}
+          title={privacyMode ? 'Disattiva Privacy Mode (mostra cifre)' : 'Attiva Privacy Mode (nascondi cifre)'}
+        >
+          {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
+          <span>{privacyMode ? 'Privacy: ON' : 'Privacy: OFF'}</span>
+        </button>
+
         <button onClick={handleLogout} className="logout-btn full-width">
           <LogOut size={20} />
           <span>Logout</span>
@@ -71,3 +96,4 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+

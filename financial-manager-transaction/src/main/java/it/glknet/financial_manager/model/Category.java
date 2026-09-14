@@ -49,6 +49,10 @@ public class Category {
 	@Builder.Default
 	private java.math.BigDecimal budget = java.math.BigDecimal.ZERO;
 
+	@Column(name = "is_fixed", nullable = false, columnDefinition = "boolean default false")
+	@Builder.Default
+	private boolean fixed = false;
+
 	@ElementCollection
 	@CollectionTable(name = "category_tags", joinColumns = @JoinColumn(name = "category_id"))
 	@Column(name = "tag")

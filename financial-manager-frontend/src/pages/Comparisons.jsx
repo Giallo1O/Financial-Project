@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   ChevronLeft, ChevronRight, TrendingUp, Tag, Calendar,
-  ArrowUpRight, ArrowDownLeft, Filter, Info, BarChart3
+  ArrowUpRight, ArrowDownLeft, Filter, Info, BarChart3, Layers, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { fetchTransactions, fetchCategories } from '../api';
 
@@ -13,7 +13,7 @@ const Comparisons = () => {
   const [allTransactions, setAllTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('mom'); // 'mom', 'trends', 'tags'
+  const [activeTab, setActiveTab] = useState('mom'); // 'mom', 'trends', 'tags', 'nature'
 
   // MoM State
   const [monthA, setMonthA] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -22,6 +22,10 @@ const Comparisons = () => {
   // Trends State
   const [trendCategory, setTrendCategory] = useState('all');
   const [trendMonths] = useState(6);
+
+  // Fisse vs Variabili State
+  const [natureMonth, setNatureMonth] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -130,6 +134,46 @@ const Comparisons = () => {
       .sort((a, b) => b.value - a.value);
   }, [allTransactions]);
 
+  // --- Spese Fisse vs Variabili & 50/30/20 Rule ---
+  const natureData = useMemo(() => {
+    const txs = getTransactionsForMonth(natureMonth);
+    const totalIncome = txs.filter(t => t.type === 'entrata').reduce((s, t) => s + t.amount, 0);
+    const expenses = txs.filter(t => t.type === 'uscita');
+    const fixedExpenses = expenses.filter(t => t.isFixed).reduce((s, t) => s + t.amount, 0);
+    const variableExpenses = expenses.filter(t => !t.isFixed).reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = fixedExpenses + variableExpenses;
+    const savings = Math.max(0, totalIncome - totalExpenses);
+
+    const fixedPct = totalExpenses > 0 ? ((fixedExpenses / totalExpenses) * 100).toFixed(1) : '0';
+    const variablePct = totalExpenses > 0 ? ((variableExpenses / totalExpenses) * 100).toFixed(1) : '0';
+
+    // 50/30/20 Rule against total income (if income > 0)
+    const ruleNeedsPct = totalIncome > 0 ? Math.min(100, Math.round((fixedExpenses / totalIncome) * 100)) : 0;
+    const ruleWantsPct = totalIncome > 0 ? Math.min(100, Math.round((variableExpenses / totalIncome) * 100)) : 0;
+    const ruleSavingsPct = totalIncome > 0 ? Math.min(100, Math.round((savings / totalIncome) * 100)) : 0;
+
+    const pieData = [
+      { name: 'Fisse (Necessità)', value: fixedExpenses, color: '#9e5545' },
+      { name: 'Variabili (Desideri)', value: variableExpenses, color: '#c5a028' }
+    ].filter(d => d.value > 0);
+
+    return {
+      totalIncome,
+      fixedExpenses,
+      variableExpenses,
+      totalExpenses,
+      savings,
+      fixedPct,
+      variablePct,
+      ruleNeedsPct,
+      ruleWantsPct,
+      ruleSavingsPct,
+      pieData,
+      fixedExpensesList: expenses.filter(t => t.isFixed),
+      variableExpensesList: expenses.filter(t => !t.isFixed)
+    };
+  }, [allTransactions, natureMonth]);
+
   if (loading) return <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>Caricamento dati...</div>;
 
   return (
@@ -174,6 +218,13 @@ const Comparisons = () => {
           style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
         >
           <Tag size={18} /> Analisi Tag
+        </button>
+        <button
+          onClick={() => setActiveTab('nature')}
+          className={`btn ${activeTab === 'nature' ? 'btn-primary' : 'btn-glass'}`}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+        >
+          <Layers size={18} /> Fisse vs Variabili (50/30/20)
         </button>
       </div>
 
@@ -308,6 +359,198 @@ const Comparisons = () => {
                 </div>
               ))}
               {tagData.length === 0 && <p className="text-muted">Nessuna spesa tracciata questo mese.</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Nature View (Spese Fisse vs Variabili & 50/30/20) */}
+      {activeTab === 'nature' && (
+        <div className="glass-panel" style={{ padding: '2rem' }}>
+          {/* Header con Month Picker */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Spese Fisse vs Variabili</h3>
+              <p className="text-muted text-sm">Analizza la sostenibilità delle tue uscite e la regola del budget 50/30/20.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                className="btn btn-glass"
+                style={{ padding: '0.4rem 0.6rem' }}
+                onClick={() => setNatureMonth(new Date(natureMonth.getFullYear(), natureMonth.getMonth() - 1, 1))}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <input
+                type="month"
+                value={getMonthKey(natureMonth)}
+                onChange={(e) => setNatureMonth(new Date(e.target.value))}
+                className="input-month"
+                style={{ width: 'auto' }}
+              />
+              <button
+                className="btn btn-glass"
+                style={{ padding: '0.4rem 0.6rem' }}
+                onClick={() => setNatureMonth(new Date(natureMonth.getFullYear(), natureMonth.getMonth() + 1, 1))}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* 3 Metric Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(158, 85, 69, 0.12)', border: '1px solid rgba(158, 85, 69, 0.3)' }}>
+              <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Spese Fisse (Necessità)</span>
+              <h3 style={{ margin: '0.5rem 0', color: '#ff9b82', fontSize: '1.6rem' }}>
+                €{natureData.fixedExpenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              </h3>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {natureData.fixedPct}% del totale uscite
+              </span>
+            </div>
+
+            <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(197, 160, 40, 0.12)', border: '1px solid rgba(197, 160, 40, 0.3)' }}>
+              <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Spese Variabili (Desideri)</span>
+              <h3 style={{ margin: '0.5rem 0', color: '#facc15', fontSize: '1.6rem' }}>
+                €{natureData.variableExpenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              </h3>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {natureData.variablePct}% del totale uscite
+              </span>
+            </div>
+
+            <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+              <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Entrate / Risparmio Netto</span>
+              <h3 style={{ margin: '0.5rem 0', color: '#34d399', fontSize: '1.6rem' }}>
+                €{natureData.savings.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              </h3>
+              <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                su €{natureData.totalIncome.toLocaleString('it-IT', { minimumFractionDigits: 2 })} entrate
+              </span>
+            </div>
+          </div>
+
+          {/* Regola 50/30/20 Card */}
+          <div style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Layers size={20} color="var(--accent-secondary)" />
+                <h4 style={{ margin: 0 }}>Analisi Regola 50 / 30 / 20</h4>
+              </div>
+              {natureData.totalIncome > 0 ? (
+                natureData.ruleNeedsPct <= 50 ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
+                    <CheckCircle size={14} /> Ottimo bilanciamento spese fisse
+                  </span>
+                ) : (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
+                    <AlertTriangle size={14} /> Le spese fisse superano il 50%
+                  </span>
+                )
+              ) : null}
+            </div>
+
+            <p className="text-muted text-sm" style={{ marginBottom: '1.5rem' }}>
+              La regola finanziaria 50/30/20 suggerisce di destinare fino al <strong>50%</strong> delle entrate a necessità (fisse), il <strong>30%</strong> a desideri personali (variabili) e almeno il <strong>20%</strong> al risparmio.
+            </p>
+
+            {/* Barre visuali 50/30/20 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                  <span>Necessità / Fisse ({natureData.ruleNeedsPct}% su target ≤50%)</span>
+                  <span style={{ fontWeight: 600 }}>€{natureData.fixedExpenses.toLocaleString('it-IT')}</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, natureData.ruleNeedsPct)}%`,
+                    height: '100%',
+                    background: natureData.ruleNeedsPct <= 50 ? 'var(--accent-primary)' : 'var(--danger)',
+                    borderRadius: '4px',
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                  <span>Desideri / Variabili ({natureData.ruleWantsPct}% su target ≤30%)</span>
+                  <span style={{ fontWeight: 600 }}>€{natureData.variableExpenses.toLocaleString('it-IT')}</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, natureData.ruleWantsPct)}%`,
+                    height: '100%',
+                    background: natureData.ruleWantsPct <= 30 ? 'var(--accent-secondary)' : 'var(--warning)',
+                    borderRadius: '4px',
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                  <span>Risparmio Netto ({natureData.ruleSavingsPct}% su target ≥20%)</span>
+                  <span style={{ fontWeight: 600 }}>€{natureData.savings.toLocaleString('it-IT')}</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, natureData.ruleSavingsPct)}%`,
+                    height: '100%',
+                    background: 'var(--success)',
+                    borderRadius: '4px',
+                    transition: 'width 0.4s ease'
+                  }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Grafico a Torta & Ripartizione */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', alignItems: 'center' }}>
+            <div style={{ height: '260px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={natureData.pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={95}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {natureData.pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-glass)', borderRadius: '8px' }}
+                    formatter={(v) => `€${v.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
+                  />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <h4 className="text-muted" style={{ fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                Dettaglio Spese Fisse
+              </h4>
+              {natureData.fixedExpensesList.length > 0 ? (
+                natureData.fixedExpensesList.slice(0, 5).map((tx, idx) => (
+                  <div key={tx.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.75rem', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
+                    <div>
+                      <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{tx.description || tx.category}</span>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tx.category}</span>
+                    </div>
+                    <span style={{ fontWeight: 600, color: '#ff9b82' }}>€{tx.amount.toLocaleString('it-IT')}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted text-sm">Nessuna spesa fissa registrata questo mese. Puoi contrassegnare le categorie come 'Fisse' nella sezione Categorie.</p>
+              )}
             </div>
           </div>
         </div>

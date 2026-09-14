@@ -53,6 +53,7 @@ public class CategoryController {
 			category.setIcon(categoryDetails.getIcon());
 			category.setExpense(categoryDetails.isExpense());
 			category.setBudget(categoryDetails.getBudget());
+			category.setFixed(categoryDetails.isFixed());
 			category.getTags().clear();
 			if (categoryDetails.getTags() != null) {
 				category.getTags().addAll(categoryDetails.getTags());

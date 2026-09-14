@@ -88,6 +88,7 @@ function mapTransactions(list, categoryMap) {
       category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
       categoryColor: categoryInfo ? categoryInfo.color : '#6b7280', // default gray
       categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
+      isFixed: categoryInfo ? Boolean(categoryInfo.fixed) : false,
       description: t.description,
       date: t.transactionDate || '',
     };
@@ -97,7 +98,7 @@ function mapTransactions(list, categoryMap) {
 // ─── Categories ───────────────────────────────────────────────────────────
 
 /**
- * Returns array of { id, name, color, icon }
+ * Returns array of { id, name, color, icon, expense, budget, fixed, tags }
  */
 export async function fetchCategories() {
   const userId = getCurrentUserId();
@@ -109,6 +110,7 @@ export async function createCategory(categoryData) {
   const payload = {
     ...categoryData,
     budget: categoryData.budget ? Number(categoryData.budget) : 0,
+    fixed: Boolean(categoryData.fixed),
     userId: getCurrentUserId(),
   };
 
@@ -125,6 +127,7 @@ export async function updateCategory(id, categoryData) {
   const payload = {
     ...categoryData,
     budget: categoryData.budget ? Number(categoryData.budget) : 0,
+    fixed: Boolean(categoryData.fixed),
     userId: getCurrentUserId(),
   };
 
@@ -260,3 +263,131 @@ export async function fetchDashboardStats({ month, year } = {}) {
   
   return data;
 }
+
+// ─── Savings Goals ────────────────────────────────────────────────────────
+
+export async function fetchSavingsGoals() {
+  const userId = getCurrentUserId();
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals?userId=${encodeURIComponent(userId)}`);
+  return await response.json();
+}
+
+export async function createSavingsGoal(goalData) {
+  const payload = {
+    ...goalData,
+    targetAmount: Number(goalData.targetAmount),
+    currentAmount: goalData.currentAmount ? Number(goalData.currentAmount) : 0,
+    userId: getCurrentUserId(),
+  };
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await response.json();
+}
+
+export async function updateSavingsGoal(id, goalData) {
+  const payload = {
+    ...goalData,
+    targetAmount: Number(goalData.targetAmount),
+    currentAmount: goalData.currentAmount != null ? Number(goalData.currentAmount) : undefined,
+    userId: getCurrentUserId(),
+  };
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await response.json();
+}
+
+export async function deleteSavingsGoal(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function depositToSavingsGoal(id, amount) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/${id}/deposit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: Number(amount) }),
+  });
+  return await response.json();
+}
+
+export async function withdrawFromSavingsGoal(id, amount) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/${id}/withdraw`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: Number(amount) }),
+  });
+  return await response.json();
+}
+
+// ─── Recurring Transactions ───────────────────────────────────────────────
+
+export async function fetchRecurringTransactions() {
+  const userId = getCurrentUserId();
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions?userId=${encodeURIComponent(userId)}`);
+  return await response.json();
+}
+
+export async function createRecurringTransaction(data) {
+  const payload = {
+    ...data,
+    amount: Number(data.amount),
+    dayOfMonth: Number(data.dayOfMonth) || 1,
+    autoConfirm: Boolean(data.autoConfirm),
+    userId: getCurrentUserId(),
+  };
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await response.json();
+}
+
+export async function updateRecurringTransaction(id, data) {
+  const payload = {
+    ...data,
+    amount: Number(data.amount),
+    dayOfMonth: Number(data.dayOfMonth) || 1,
+    autoConfirm: Boolean(data.autoConfirm),
+    userId: getCurrentUserId(),
+  };
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await response.json();
+}
+
+export async function deleteRecurringTransaction(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function confirmRecurringTransaction(id, date) {
+  let url = `${TRANSACTION_API}/api/recurring-transactions/${id}/confirm`;
+  if (date) {
+    url += `?date=${encodeURIComponent(date)}`;
+  }
+  const response = await authenticatedFetch(url, {
+    method: 'POST',
+  });
+  return await response.json();
+}
+
+export async function processAutoRecurringTransactions() {
+  const userId = getCurrentUserId();
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions/process-auto?userId=${encodeURIComponent(userId)}`, {
+    method: 'POST',
+  });
+  return await response.json();
+}
+

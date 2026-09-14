@@ -280,3 +280,24 @@ option {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-primary);
 }
+
+/* ─── Privacy Mode Global Styling ─────────────────────────────────────── */
+body.privacy-active .privacy-blur,
+body.privacy-active [data-privacy="true"],
+body.privacy-active .balance-display h2,
+body.privacy-active .stat-box h4,
+body.privacy-active .summary-stats h4,
+body.privacy-active .history-row td:nth-child(4),
+body.privacy-active .budget-card h2,
+body.privacy-active .budget-card h3,
+body.privacy-active .recharts-pie,
+body.privacy-active .recharts-bar-rectangles {
+  filter: blur(8px) !important;
+  user-select: none !important;
+  transition: filter 0.25s ease;
+}
+
+body.privacy-active .privacy-blur:hover,
+body.privacy-active [data-privacy="true"]:hover {
+  filter: blur(0px) !important;
+}
