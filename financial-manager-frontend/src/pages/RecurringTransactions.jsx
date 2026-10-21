@@ -15,7 +15,6 @@ import '../components/Components.css';
 const RecurringTransactions = () => {
   const [recurringList, setRecurringList] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('calendar'); // 'calendar' or 'list'
 
   // Calendar view state
@@ -38,7 +37,6 @@ const RecurringTransactions = () => {
 
   const loadAllData = async () => {
     try {
-      setLoading(true);
       const [recData, catData] = await Promise.all([
         fetchRecurringTransactions(),
         fetchCategories()
@@ -50,8 +48,6 @@ const RecurringTransactions = () => {
       }
     } catch (err) {
       console.error('Failed to load recurring transactions', err);
-    } finally {
-      setLoading(false);
     }
   };
 

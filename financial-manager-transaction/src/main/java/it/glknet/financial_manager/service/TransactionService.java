@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import it.glknet.financial_manager.dto.TransactionDeleteEvent;
@@ -49,7 +51,7 @@ public class TransactionService {
 		TransactionEvent event = new TransactionEvent(saved.getId(), saved.getDescription(), saved.getAmount(),
 				saved.getType(), saved.getCategoryId(), saved.getUserId(), saved.getTransactionDate());
 
-		kafkaProducerService.sendTransactionEvent(event);
+		afterCommit(() -> kafkaProducerService.sendTransactionEvent(event));
 
 		return saved;
 	}
@@ -62,6 +64,7 @@ public class TransactionService {
 		return repository.findByUserIdAndMonthAndYear(userId, month, year);
 	}
 
+	@Transactional
 	public void deleteTransaction(UUID id, UUID userId) {
 		// 1. Trova la transazione (serve per sapere importo e categoria da stornare); solo se e' dell'utente
 		Transaction tx = repository.findById(id).filter(t -> userId.equals(t.getUserId()))
@@ -73,6 +76,16 @@ public class TransactionService {
 		// 3. Crea l'evento e spediscilo su Kafka
 		TransactionDeleteEvent event = new TransactionDeleteEvent(tx.getId(), tx.getAmount(), tx.getType().name(),
 				tx.getCategoryId(), tx.getUserId(), tx.getTransactionDate());
-		kafkaProducerService.sendTransactionDeleteEvent(event);
+		afterCommit(() -> kafkaProducerService.sendTransactionDeleteEvent(event));
+	}
+
+	// ponytail: se Kafka e' giu' nel momento dell'invio l'evento si perde (serve un outbox); almeno non partono eventi per commit falliti.
+	private static void afterCommit(Runnable send) {
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				send.run();
+			}
+		});
 	}
 }

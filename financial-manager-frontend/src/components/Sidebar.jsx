@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet,
   Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock
 } from 'lucide-react';
-import { removeAuth, getUserInfo } from '../auth';
+import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
 import './Sidebar.css';
 

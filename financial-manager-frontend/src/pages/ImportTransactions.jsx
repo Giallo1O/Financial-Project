@@ -33,7 +33,6 @@ const ImportTransactions = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
-  const [isDragging, setIsDragging] = useState(false);
   
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -63,16 +62,10 @@ const ImportTransactions = () => {
 
   const onDragOver = (e) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = () => {
-    setIsDragging(false);
   };
 
   const onDrop = (e) => {
     e.preventDefault();
-    setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
       setFile(droppedFile);
@@ -125,6 +118,8 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
+      // tempId serve solo alla UI: non va inviato al backend
+      // eslint-disable-next-line no-unused-vars
       const payload = transactions.map(({ tempId, transactionDate, ...rest }) => ({
         ...rest,
         transactionDate: format(transactionDate, 'yyyy-MM-dd'),
@@ -191,7 +186,6 @@ const ImportTransactions = () => {
         {currentStep === 1 && (
           <div className="glass-panel dropzone-container fade-in"
                onDragOver={onDragOver}
-               onDragLeave={onDragLeave}
                onDrop={onDrop}
                onClick={() => fileInputRef.current.click()}>
             <input 

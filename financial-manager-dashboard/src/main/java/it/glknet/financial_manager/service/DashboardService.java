@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import it.glknet.financial_manager.dto.TransactionDeleteEvent;
 import it.glknet.financial_manager.dto.TransactionEvent;
 import it.glknet.financial_manager.model.CategorySummary;
+import it.glknet.financial_manager.model.TransactionType;
 import it.glknet.financial_manager.repository.CategorySummaryRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class DashboardService {
 		// Cerchiamo il riassunto mensile per tipo (Entrata/Uscita), se non esiste ne creiamo uno nuovo
 		CategorySummary summary = repository.findByUserIdAndMonthAndYearAndExpense(event.userId(),
 				event.transactionDate().getMonthValue(), event.transactionDate().getYear(),
-				event.type().equals("USCITA"))
+				event.type() == TransactionType.USCITA)
 				.orElseGet(() -> {
 					CategorySummary newSummary = new CategorySummary();
 					newSummary.setUserId(event.userId());
@@ -37,7 +38,7 @@ public class DashboardService {
 					newSummary.setYear(event.transactionDate().getYear());
 					newSummary.setTotalAmount(BigDecimal.ZERO);
 					newSummary.setTransactionCount(0L);
-					newSummary.setExpense(event.type().equals("USCITA"));
+					newSummary.setExpense(event.type() == TransactionType.USCITA);
 					return newSummary;
 				});
 

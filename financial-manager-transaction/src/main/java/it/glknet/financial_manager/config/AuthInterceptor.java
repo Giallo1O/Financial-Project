@@ -11,6 +11,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -21,6 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * Su ogni /api/** chiede all'user-service di chi e' il token "Authorization: Bearer ..."
  * e mette lo userId verificato nell'attributo {@link #USER_ID} della richiesta.
  * I controller usano SOLO questo valore, mai quello mandato dal client.
+ * Configura anche il CORS (origini ammesse da cors.allowed-origins, separate da virgola).
  */
 // ponytail: una chiamata HTTP all'user-service per richiesta; aggiungere cache a TTL breve se la latenza pesa.
 @Component
@@ -30,6 +32,9 @@ public class AuthInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
 	private final RestClient userService;
 
+	@Value("${cors.allowed-origins:http://localhost:3000}")
+	private String[] allowedOrigins;
+
 	@Autowired
 	public AuthInterceptor(@Value("${user-service.url:http://localhost:8082}") String userServiceUrl) {
 		this(RestClient.builder(), userServiceUrl);
@@ -37,6 +42,12 @@ public class AuthInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
 	AuthInterceptor(RestClient.Builder builder, String userServiceUrl) {
 		this.userService = builder.baseUrl(userServiceUrl).build();
+	}
+
+	@Override
+	public void addCorsMappings(CorsRegistry registry) {
+		registry.addMapping("/api/**").allowedOrigins(allowedOrigins).allowedMethods("GET", "POST", "PUT", "DELETE")
+				.allowedHeaders("*");
 	}
 
 	@Override

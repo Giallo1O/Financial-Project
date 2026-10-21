@@ -46,7 +46,8 @@ Un database PostgreSQL per ogni servizio (nessun database condiviso).
   - `/api/categories` (CRUD, budget, tag, fissa/variabile)
   - `/api/recurring-transactions` (CRUD, `confirm`, `process-auto`, job schedulato)
   - `/api/savings-goals` (CRUD, `deposit`, `withdraw`)
-  - Pubblica su Kafka gli eventi di creazione/cancellazione transazione e di cancellazione categoria.
+  - Pubblica su Kafka gli eventi di creazione/cancellazione transazione (dopo il commit sul DB).
+  - Tutte le API richiedono `Authorization: Bearer <token>`; i dati sono sempre limitati all'utente del token.
 - **`financial-manager-dashboard`** (Spring Boot, porta 8081) — consuma gli eventi Kafka e mantiene riepiloghi mensili entrate/uscite (`category_summaries`); espone `GET /api/dashboard/stats`.
 - **`financial-manager-frontend`** (React 19 + Vite) — SPA servita da Nginx, che in Kubernetes fa anche da reverse proxy (`/api/transaction`, `/api/dashboard`, `/api/user`).
 
@@ -56,7 +57,6 @@ Un database PostgreSQL per ogni servizio (nessun database condiviso).
 |---|---|---|
 | `transactions-topic` | transaction | dashboard |
 | `transactions-delete-topic` | transaction | dashboard |
-| `category-delete-topic` | transaction | — (vedi "Stato del progetto") |
 | `transaction.import.requests` | transaction (bulk import) | transaction (crea le transazioni) |
 
 ### Stack
@@ -80,7 +80,7 @@ docker compose up --build
 | Kafka UI | http://localhost:8090 |
 | pgAdmin | http://localhost:5050 (`admin@admin.com` / `admin`) |
 
-Registra un utente dalla schermata di login e parti dalle **Categorie**, poi inserisci le prime transazioni (oppure importa un CSV).
+Le password di database e pgAdmin si cambiano copiando `.env.example` in `.env` (default: quelle di sempre). Registra un utente dalla schermata di login e parti dalle **Categorie**, poi inserisci le prime transazioni (oppure importa un CSV).
 
 ### Sviluppo senza Docker per i servizi
 
@@ -101,8 +101,10 @@ Porte DB in locale: transactions `5432`, dashboard `5433`, users `5434`. Il serv
 
 ## Deploy su Kubernetes
 
-1. Modifica `SERVER_USER` / `SERVER_IP` in `deploy.sh`.
-2. Lancia `./deploy.sh`: costruisce le 4 immagini (`finmanager/*:latest`), le salva in `.tar`, le copia via `scp` sul server, le importa (Docker; ci sono le righe già pronte per k3s/MicroK8s) e applica `k8s/finmanager.yaml`.
+1. Imposta `SERVER_USER` / `SERVER_IP` (variabili d'ambiente, oppure modifica i default in `deploy.sh`).
+2. Lancia `DB_PASSWORD=... ./deploy.sh`: costruisce le 4 immagini con un tag unico (`finmanager/*:<timestamp>`), le salva in `.tar`, le copia via `scp` sul server, le importa (Docker; ci sono le righe già pronte per k3s/MicroK8s), crea il Secret `finmanager-db` se manca e applica `k8s/finmanager.yaml`.
+   - `DB_PASSWORD` serve solo la prima volta (quando il Secret non esiste). **Se i database esistono già, usa la password attuale (`password`)**: Postgres applica la password solo alla creazione del volume.
+   - I pod hanno probe di startup/readiness/liveness (`/actuator/health/...`).
 3. L'app è esposta con un `NodePort` su **`:30000`** nel namespace `finmanager`.
 
 Il frontend per K8s viene buildato con URL relativi (`/api/...`) che Nginx inoltra ai servizi interni.
@@ -158,26 +160,29 @@ I tre `feature/*` si possono cancellare senza perdere nulla.
 
 ### Verifiche fatte
 
-- ✅ I tre servizi Spring Boot **compilano** (Java 21).
-- ✅ Il frontend **builda** (`vite build`; avviso: bundle > 500 kB, manca il code-splitting).
-- ⚠️ `npm run lint`: **10 errori, 4 warning** (soprattutto variabili inutilizzate).
-- ⚠️ **Test:** esiste solo il test di avvio di default (`contextLoads`) in transaction e dashboard; nessun test sulla logica.
+- ✅ I tre servizi Spring Boot **compilano** (Java 21) e il frontend **builda**.
+- ✅ `npm run lint`: 0 errori (restano 4 warning sulle dipendenze degli hook React).
+- ✅ **Test** (unitari, senza database): token/CORS (`AuthInterceptor`), import CSV, ricorrenze (data successiva a fine mese, accesso di altri utenti), obiettivi di risparmio, e il calcolo entrate/uscite del dashboard. Restano solo i `contextLoads` di default, che richiedono un database.
+- ⚠️ Non provato end-to-end: nel mio ambiente non c'erano Postgres/Kafka, quindi stack completo, Docker e Kubernetes non sono stati avviati.
 
-### Problemi noti e cose da sistemare
+### Problemi risolti
 
-Ordinati per importanza (il punto 1 è già stato affrontato).
+1. **Sicurezza:** ogni richiesta a transaction e dashboard viene validata chiedendo a `user-service` (`GET /api/auth/me`) di chi è il token; il `userId` inviato dal client è ignorato. Lettura, modifica e cancellazione di transazioni, categorie, ricorrenze e obiettivi sono limitate al proprietario (404 altrimenti); nei POST gli `id` del client sono ignorati.
+2. **Dashboard-service:** corretto il calcolo entrata/uscita (confrontava l'enum con una stringa, quindi tutto finiva tra le entrate). **I riepiloghi già salvati nel DB del dashboard sono sbagliati**: vanno ricostruiti svuotando `category_summaries` e azzerando il consumer group (es. cambiando `dashboard-group-v2`) per rileggere gli eventi.
+3. **Cancellazione categoria:** le transazioni e le ricorrenze collegate restano ma senza categoria (mostrate con "—"); i totali non cambiano. Rimosso l'evento Kafka `category-delete-topic`, che non aveva consumatori.
+4. **Eventi Kafka:** ora partono solo dopo il commit del DB (niente eventi per operazioni annullate).
+5. **Configurazione:** password DB e pgAdmin da `.env` (compose) e da un Secret Kubernetes; CORS configurabile con `CORS_ALLOWED_ORIGINS` (prima: fisso su localhost:3000, e `*` nel servizio user); IP/utente del server sovrascrivibili.
+6. **Kubernetes:** immagini con tag unico a ogni deploy (con `:latest` fisso i pod non venivano riavviati), probe di salute, Kafka alla versione `4.0.0` invece di `latest`.
+7. **Pulizia:** rimossi `.factorypath` e i file `application.properties.clean` (obsoleti), log Kafka in DEBUG, README del frontend sostituito.
 
-1. **Sicurezza — ✅ risolto (con limiti).** Ogni richiesta a transaction e dashboard deve avere `Authorization: Bearer <token>`: i servizi chiedono a `user-service` (`GET /api/auth/me`) di chi è il token e usano **solo** quello `userId`, ignorando quello inviato dal client. Lettura, modifica e cancellazione di transazioni, categorie, ricorrenze e obiettivi sono limitate al proprietario (altrimenti 404). Limiti rimasti: il token non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il token precedente (un solo dispositivo alla volta); c'è una chiamata HTTP a `user-service` per ogni richiesta (nessuna cache); CORS dell'user-service è ancora `*`.
-2. **Dashboard service: bug nel calcolo entrata/uscita.** In `DashboardService` si confronta l'enum con una stringa (`event.type().equals("USCITA")`), che è sempre `false`: tutto viene contato come "entrata". Oggi non si vede perché la dashboard del frontend **non usa** `/api/dashboard/stats` ma ricalcola tutto dalle transazioni. Il servizio dashboard e Kafka sono quindi di fatto non sfruttati dalla UI: o si corregge e li si usa, o si decide di eliminarli.
-3. **Evento di cancellazione categoria non gestito.** Il servizio transaction pubblica su `category-delete-topic`, ma il dashboard non lo ascolta (esiste solo il DTO) e il topic non è dichiarato in `KafkaTopicConfig`. Inoltre eliminando una categoria le transazioni collegate restano con un `categoryId` orfano.
-4. **Cancellazione transazioni:** `deleteTransaction` fa la delete su DB e poi invia l'evento Kafka senza transazione/outbox; se Kafka è giù i due stati si disallineano (stesso discorso per la creazione).
-5. **Segreti e configurazione hardcoded:** password DB (`user`/`password`), pgAdmin `admin/admin`, IP e utente `root` in `deploy.sh`, CORS fissato su `http://localhost:3000` (nel servizio user è `*`). Da spostare in variabili d'ambiente / Kubernetes Secrets.
-6. **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica supporta solo "ogni mese al giorno X".
-7. **Kubernetes:** immagini `:latest` con `IfNotPresent`, nessun Ingress/TLS, nessuna probe di salute; `kafka:latest` e `ddl-auto=update` non sono adatti alla produzione (meglio Flyway/Liquibase).
-8. **Pulizia:** `financial-manager-user/.factorypath` (file IDE) versionato, `README.md` del frontend ancora quello del template Vite (ora sostituibile con un rimando a questo file), file `application.properties.clean` accanto alle properties vere, log Kafka a livello DEBUG nel dashboard.
+### Limiti noti e cose ancora aperte
 
-### Prossimi passi consigliati
+- **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il precedente (un dispositivo alla volta); `user-service` viene interrogato a ogni richiesta (nessuna cache).
+- **Kafka:** se il broker è irraggiungibile al momento dell'invio l'evento si perde (servirebbe un outbox). Il dashboard-service è comunque **ancora non usato** dalla UI, che ricalcola tutto dalle transazioni.
+- **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica supporta solo "ogni mese al giorno X".
+- **Kubernetes:** nessun Ingress/TLS; `ddl-auto=update` al posto di migrazioni (Flyway/Liquibase); password del DB uguale per i tre database.
+- **Frontend:** bundle > 500 kB (manca il code-splitting).
 
-1. Decidere il destino del dashboard-service (correggere il bug e usarlo, oppure rimuoverlo) e gestire la cancellazione categoria (punti 2–3).
-2. Aggiungere test sulla logica chiave (ricorrenze, import CSV, obiettivi) e sistemare il lint.
-3. Spostare segreti/config fuori dal codice e rendere il deploy K8s più robusto.
+### Prossimi passi
+
+Dipendono dalla direzione del progetto: in particolare cosa fare del dashboard-service (usarlo nella UI o rimuoverlo) e se servono ricorrenze non mensili.

@@ -5,7 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,20 +17,20 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.glknet.financial_manager.config.AuthInterceptor;
-import it.glknet.financial_manager.dto.CategoryDeleteEvent;
 import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.repository.CategoryRepository;
-import it.glknet.financial_manager.service.KafkaProducerService;
+import it.glknet.financial_manager.repository.RecurringTransactionRepository;
+import it.glknet.financial_manager.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/categories")
-@CrossOrigin(origins = "http://localhost:3000") // Frontend Docker port
 @RequiredArgsConstructor
 public class CategoryController {
 
 	private final CategoryRepository categoryRepository;
-	private final KafkaProducerService kafkaProducerService;
+	private final TransactionRepository transactionRepository;
+	private final RecurringTransactionRepository recurringRepository;
 
 	// 1. Ottieni tutte le categorie di un utente
 	@GetMapping
@@ -70,12 +70,14 @@ public class CategoryController {
 
 	// 4. Elimina una categoria
 	@DeleteMapping("/{id}")
+	@Transactional
 	public ResponseEntity<Void> deleteCategory(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@PathVariable UUID id) {
 		categoryRepository.findById(id).filter(c -> userId.equals(c.getUserId())).ifPresent(category -> {
-			categoryRepository.deleteById(id);
-			// Invia evento Kafka per notificare il microservizio dashboard
-			kafkaProducerService.sendCategoryDeleteEvent(new CategoryDeleteEvent(id, category.getUserId(), category.isExpense()));
+			// Le transazioni restano (i totali non cambiano) ma perdono la categoria
+			transactionRepository.detachCategory(id);
+			recurringRepository.detachCategory(id);
+			categoryRepository.delete(category);
 		});
 		return ResponseEntity.noContent().build();
 	}

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
 import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.dto.TransactionRequest;
@@ -28,7 +27,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/transactions")
-@CrossOrigin(origins = "http://localhost:3000") // Frontend Docker port
 @RequiredArgsConstructor
 public class TransactionController {
 

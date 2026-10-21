@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/recurring-transactions")
-@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 public class RecurringTransactionController {
 

@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard } from 'lucide-react';
 import AccountSummary from '../components/AccountSummary';
 import CategoryPieChart from '../components/CategoryPieChart';
-import { fetchTransactions, fetchDashboardStats, fetchCategories } from '../api';
+import { fetchTransactions, fetchCategories } from '../api';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
