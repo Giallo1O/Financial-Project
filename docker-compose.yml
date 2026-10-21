@@ -44,6 +44,9 @@ services:
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-password}
       - USER_SERVICE_URL=http://user-service:8082
+      # Lettura scontrini con Claude: imposta ANTHROPIC_API_KEY in .env
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-opus-5-5}
     depends_on:
       postgres-transactions:
         condition: service_healthy
@@ -75,6 +78,31 @@ services:
     depends_on:
       - transaction-service
       - user-service
+
+  # Backup giornaliero di entrambi i database in ./backups (compressi, ultimi 14 giorni).
+  # Attenzione: sta sullo stesso disco del server; copia ogni tanto la cartella su un altro supporto.
+  backup:
+    image: postgres:16
+    container_name: db-backup
+    environment:
+      PGPASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      postgres-transactions:
+        condition: service_healthy
+      postgres-users:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          d=$$(date +%Y%m%d-%H%M%S)
+          pg_dump -h pg-trans -U user db_transactions | gzip > /backups/transactions-$$d.sql.gz
+          pg_dump -h pg-users -U user db_users | gzip > /backups/users-$$d.sql.gz
+          find /backups -name '*.sql.gz' -mtime +14 -delete
+          sleep 86400
+        done
 
   pgadmin:
     image: dpage/pgadmin4:latest

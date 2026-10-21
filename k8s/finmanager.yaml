@@ -163,6 +163,13 @@ spec:
               value: jdbc:postgresql://pg-trans:5432/db_transactions
             - name: USER_SERVICE_URL
               value: http://user-service:8082
+            # Lettura scontrini con Claude; il Secret si crea con deploy.sh (ANTHROPIC_API_KEY=...). Senza, l'app parte ma la lettura scontrini e' disattivata.
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: finmanager-anthropic
+                  key: api-key
+                  optional: true
             - name: SPRING_DATASOURCE_USERNAME
               value: user
             - name: SPRING_DATASOURCE_PASSWORD
@@ -290,3 +297,59 @@ spec:
       nodePort: 30000
   selector:
     app: frontend-service
+---
+# ==========================================
+# BACKUP GIORNALIERO DEI DATABASE (ultimi 14 giorni)
+# I file stanno nel volume backups-pvc, sullo stesso server: copiali ogni tanto su un altro supporto.
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups-pvc
+  namespace: finmanager
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: finmanager
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:16
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: finmanager-db
+                      key: password
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  d=$(date +%Y%m%d-%H%M%S)
+                  pg_dump -h pg-trans -U user db_transactions | gzip > /backups/transactions-$d.sql.gz
+                  pg_dump -h pg-users -U user db_users | gzip > /backups/users-$d.sql.gz
+                  find /backups -name '*.sql.gz' -mtime +14 -delete
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: backups-pvc

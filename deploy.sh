@@ -15,6 +15,9 @@ TAG="$(date +%Y%m%d%H%M%S)"
 # Postgres la applica solo alla prima creazione del volume.
 DB_PASSWORD="${DB_PASSWORD:-}"
 
+# Chiave API Anthropic per la lettura degli scontrini (opzionale; se omessa si mantiene quella gia' nel cluster)
+ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
+
 echo "========================================="
 echo "1. Costruzione immagini Docker per K8s..."
 echo "========================================="
@@ -82,6 +85,11 @@ ssh $SERVER_USER@$SERVER_IP << EOF
   echo "-> Rimuovo i vecchi dashboard-service e Kafka, se presenti (il volume pg-dash-pvc resta: eliminalo a mano quando vuoi)..."
   kubectl -n finmanager delete deployment dashboard-service kafka pg-dash --ignore-not-found
   kubectl -n finmanager delete service dashboard-service kafka pg-dash --ignore-not-found
+
+  if [ -n "$ANTHROPIC_API_KEY" ]; then
+    echo "-> Aggiorno il Secret con la chiave Anthropic..."
+    kubectl -n finmanager create secret generic finmanager-anthropic --from-literal=api-key='$ANTHROPIC_API_KEY' --dry-run=client -o yaml | kubectl apply -f -
+  fi
 
   echo "-> Applico i manifest Kubernetes (immagini taggate $TAG)..."
   sed "s#\(image: finmanager/[a-z-]*\):latest#\1:$TAG#" k8s/finmanager.yaml | kubectl apply -f -

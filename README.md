@@ -1,125 +1,132 @@
 # FinManager — Gestione Finanze Personali
 
-Applicazione web per tenere traccia di entrate e uscite, budget, obiettivi di risparmio e spese ricorrenti. Interfaccia in italiano, architettura a **microservizi** con **Kafka** per la comunicazione asincrona, pensata per girare sia in locale (Docker Compose) sia su un cluster **Kubernetes**.
+Applicazione web per gestire le proprie finanze su un **home server**: movimenti, budget, obiettivi di risparmio, spese ricorrenti e **scontrini della spesa letti da un'AI**. Interfaccia in italiano, pensata per poche persone (account separati) sulla rete di casa. Gira con Docker Compose o su Kubernetes.
 
 ## Funzionalità
 
 | Area | Cosa fa |
 |---|---|
-| **Account** | Registrazione e login con username/password (hash BCrypt). Ogni utente vede solo i propri dati. |
-| **Dashboard** | Panoramica del mese corrente: saldo, entrate/uscite, grafici a torta separati per categorie di entrata e di uscita, ultime transazioni. |
-| **Transazioni** | Inserimento, elenco e cancellazione di entrate/uscite con data, categoria e descrizione. Esportazione in **Excel** e **PDF**. |
-| **Import CSV** | Wizard in 3 step: carica il CSV, correggi le righe (data, importo, categoria), conferma. L'import avviene in modo asincrono via Kafka. Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
-| **Categorie** | Colore, icona, tipo (entrata/uscita), budget mensile, flag **fissa/variabile** e **tag** liberi (es. `#Parigi2026`). |
-| **Budget** | Per ogni categoria di spesa: budget mensile vs speso, con percentuale e avviso di sforamento. |
-| **Analisi** | Grafici del mese selezionato: barre per categoria (con filtro entrate/uscite) e andamento giornaliero per categoria. |
-| **Confronti** | 4 schede: *mese su mese*, *trend* degli ultimi N mesi, *analisi per tag*, *spese fisse vs variabili* (con regola del 50/30/20). |
-| **Ricorrenti & Scadenze** | Spese/entrate periodiche (affitto, abbonamenti…) con **calendario delle scadenze**. Si confermano a mano oppure in automatico (`autoConfirm`): un job giornaliero alle 01:00 genera le transazioni in scadenza. |
-| **Obiettivi di risparmio** | "Salvadanai" con importo target, data obiettivo, colore/icona; versamenti e prelievi; barra di avanzamento; completamento automatico. |
-| **Privacy mode** | Pulsante "occhio" nella sidebar che sfoca tutte le cifre. |
+| **Account** | Registrazione e login (password con hash BCrypt). Ogni utente vede solo i propri dati. |
+| **Dashboard** | Mese corrente: saldo, entrate/uscite, grafici a torta per categoria, ultime transazioni. |
+| **Transazioni** | Inserimento, elenco e cancellazione di entrate/uscite. Esportazione in **Excel** e **PDF**. |
+| **Import CSV** | Wizard in 3 step: carica il CSV, controlla e correggi le righe, conferma. **Salta i movimenti già presenti** (stessa data, importo, tipo e descrizione): puoi ricaricare estratti conto che si sovrappongono senza creare doppioni. Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
+| **Spesa (scontrini)** | Carichi la foto (o il PDF) di uno scontrino: un'AI (Claude) estrae negozio, data, totale e ogni articolo con nome normalizzato, quantità, prezzo e tipo di alimento. Controlli e correggi la bozza, poi salvi: viene creata la **spesa** tra le transazioni e le righe prodotto. Pagine: elenco scontrini, **prodotti e prezzi** (minimo/medio/massimo, dove costa meno, andamento nel tempo), **spesa per tipo di alimento** per mese. |
+| **Categorie** | Colore, icona, tipo (entrata/uscita), budget mensile, flag **fissa/variabile** e **tag** (es. `#Parigi2026`). |
+| **Budget** | Per ogni categoria di spesa: budget mensile vs speso, con avviso di sforamento. |
+| **Analisi** | Grafici del mese: barre per categoria e andamento giornaliero. |
+| **Confronti** | *Mese su mese*, *trend* degli ultimi N mesi, *analisi per tag*, *spese fisse vs variabili* (regola 50/30/20). |
+| **Ricorrenti & Scadenze** | Spese/entrate periodiche con **calendario delle scadenze**; conferma manuale o automatica (job alle 01:00). Solo cadenza mensile. |
+| **Obiettivi di risparmio** | "Salvadanai" con importo target, data, versamenti e prelievi, barra di avanzamento. |
+| **Privacy mode** | Pulsante "occhio" che sfoca tutte le cifre. |
+| **Backup** | Dump giornaliero compresso di entrambi i database (ultimi 14 giorni). |
 
 ## Architettura
 
 ```
-                         ┌───────────────────────┐
-   Browser ───────────►  │  Frontend (React/Nginx) │  :3000 (compose) / :30000 (k8s)
-                         └──────┬────────┬────────┘
-              ┌─────────────────┘        │         └──────────────┐
-              ▼                          ▼                        ▼
-   ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
-   │ user-service :8082 │   │ transaction-service│   │ dashboard-service  │
-   │ auth               │   │ :8080              │   │ :8081              │
-   └─────────┬──────────┘   └───┬────────────▲───┘   └───▲────────────────┘
-             ▼                  ▼            │           │
-        Postgres users     Postgres      Kafka ──────────┘
-        (db_users)         transactions  (eventi)    Postgres dashboard
-                           (db_transactions)         (db_dashboard)
+                       ┌─────────────────────────┐
+   Browser ─────────►  │ Frontend (React + Nginx) │  :3000 (compose) / :30000 (k8s)
+                       └─────┬──────────────┬─────┘
+                             ▼              ▼
+              ┌──────────────────────┐  ┌──────────────────┐
+              │ transaction-service  │  │ user-service     │
+              │ :8080                │─►│ :8082            │  valida il token (GET /api/auth/me)
+              └───────┬──────────────┘  └────────┬─────────┘
+                      │                          ▼
+                      ▼                     Postgres users
+                 Postgres transactions
+                      │
+                      └──► API Anthropic (solo per leggere gli scontrini)
 ```
 
-Un database PostgreSQL per ogni servizio (nessun database condiviso).
+Un database PostgreSQL per servizio. Nessun broker di messaggi.
 
 ### Servizi
 
-- **`financial-manager-user`** (Spring Boot, porta 8082) — `POST /api/auth/register`, `POST /api/auth/login`. Restituisce `{token, username, userId}`.
-- **`financial-manager-transaction`** (Spring Boot, porta 8080) — il cuore del sistema:
-  - `/api/transactions` (CRUD, filtro `month`/`year`, `parse-csv`, `bulk-import`)
-  - `/api/categories` (CRUD, budget, tag, fissa/variabile)
-  - `/api/recurring-transactions` (CRUD, `confirm`, `process-auto`, job schedulato)
-  - `/api/savings-goals` (CRUD, `deposit`, `withdraw`)
-  - Pubblica su Kafka gli eventi di creazione/cancellazione transazione (dopo il commit sul DB).
-  - Tutte le API richiedono `Authorization: Bearer <token>`; i dati sono sempre limitati all'utente del token.
-- **`financial-manager-dashboard`** (Spring Boot, porta 8081) — consuma gli eventi Kafka e mantiene riepiloghi mensili entrate/uscite (`category_summaries`); espone `GET /api/dashboard/stats`.
-- **`financial-manager-frontend`** (React 19 + Vite) — SPA servita da Nginx, che in Kubernetes fa anche da reverse proxy (`/api/transaction`, `/api/dashboard`, `/api/user`).
-
-### Topic Kafka
-
-| Topic | Produttore | Consumatore |
-|---|---|---|
-| `transactions-topic` | transaction | dashboard |
-| `transactions-delete-topic` | transaction | dashboard |
-| `transaction.import.requests` | transaction (bulk import) | transaction (crea le transazioni) |
+- **`financial-manager-user`** (Spring Boot, :8082) — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (risolve un token in utente, usato dagli altri servizi).
+- **`financial-manager-transaction`** (Spring Boot, :8080) — il cuore del sistema. Tutte le API richiedono `Authorization: Bearer <token>` e lavorano solo sui dati dell'utente del token:
+  - `/api/transactions` (CRUD, filtro `month`/`year`, `parse-csv` con anteprima doppioni, `bulk-import`)
+  - `/api/categories`, `/api/recurring-transactions`, `/api/savings-goals`
+  - `/api/receipts` (`scan`, salvataggio, elenco, dettaglio, cancellazione, `products`, `products/history`, `spending`)
+- **`financial-manager-frontend`** (React 19 + Vite) — SPA servita da Nginx, che in Kubernetes fa anche da reverse proxy (`/api/transaction`, `/api/user`).
 
 ### Stack
 
-- **Backend:** Java 21 (virtual threads), Spring Boot 4.0.3, Spring Data JPA, Spring Kafka, PostgreSQL 16, OpenCSV, Lombok
-- **Frontend:** React 19, Vite 7, React Router 7, Recharts, react-datepicker + date-fns (locale IT), lucide-react, `xlsx`, `jspdf` + `jspdf-autotable`
-- **Infra:** Docker, Docker Compose, Kubernetes (manifest unico), Kafka in modalità KRaft
+- **Backend:** Java 21 (virtual threads), Spring Boot 4.0.3, Spring Data JPA, PostgreSQL 16, OpenCSV, SDK Java Anthropic, Lombok
+- **Frontend:** React 19, Vite 7, React Router 7, Recharts, react-datepicker + date-fns, lucide-react, `xlsx`, `jspdf`
+- **Infra:** Docker, Docker Compose, Kubernetes (manifest unico)
+
+## Lettura degli scontrini
+
+1. Crea una chiave API su https://console.anthropic.com e mettila in `.env` come `ANTHROPIC_API_KEY` (vedi `.env.example`). Il server deve poter raggiungere `api.anthropic.com`; senza chiave l'app funziona, solo la lettura scontrini è disattivata.
+2. Vai su **Spesa → Nuovo scontrino** e carica una o più foto (fino a 4, per scontrini lunghi) o un PDF. Il browser ridimensiona le foto e applica la rotazione prima dell'invio.
+3. Controlla la bozza: l'app avvisa se la somma delle righe non coincide con il totale. Gli sconti sono righe negative. Salvando si crea la transazione di spesa (categoria a scelta) e lo stesso scontrino non si può salvare due volte.
+
+Il modello è `claude-opus-5-5` per default (`ANTHROPIC_MODEL` per cambiarlo, es. `claude-sonnet-5-5` o `claude-haiku-5-5` per costare meno: conviene confrontarli su scontrini reali). Il costo per scontrino non è ancora stato misurato su scontrini veri.
 
 ## Avvio in locale (Docker Compose)
 
-Requisiti: Docker con Compose.
-
 ```bash
+cp .env.example .env     # poi modifica password e chiave Anthropic
 docker compose up --build
 ```
 
 | Cosa | URL |
 |---|---|
 | App | http://localhost:3000 |
-| transaction / dashboard / user API | http://localhost:8080 / 8081 / 8082 |
-| Kafka UI | http://localhost:8090 |
-| pgAdmin | http://localhost:5050 (`admin@admin.com` / `admin`) |
+| transaction / user API | http://localhost:8080 / 8082 |
+| pgAdmin | http://localhost:5050 (`admin@admin.com` / password `PGADMIN_PASSWORD`) |
 
-Le password di database e pgAdmin si cambiano copiando `.env.example` in `.env` (default: quelle di sempre). Registra un utente dalla schermata di login e parti dalle **Categorie**, poi inserisci le prime transazioni (oppure importa un CSV).
+Registra un utente dal login, crea qualche **Categoria** e inserisci movimenti, importa un CSV o carica uno scontrino. Per far usare l'app a un'altra persona basta che si registri con un altro username: i dati sono separati.
+
+> `DB_PASSWORD` vale solo alla **prima** creazione dei volumi Postgres; con volumi esistenti la password del DB non cambia.
 
 ### Sviluppo senza Docker per i servizi
 
 ```bash
-# infrastruttura (db + kafka) dal compose
-docker compose up postgres-transactions postgres-dashboard postgres-users kafka
+docker compose up postgres-transactions postgres-users          # solo i database
 
-# backend (in ogni cartella financial-manager-*)
+# in financial-manager-user e financial-manager-transaction
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/db_transactions \
 SPRING_DATASOURCE_USERNAME=user SPRING_DATASOURCE_PASSWORD=password \
 ./mvnw spring-boot:run
 
-# frontend
 cd financial-manager-frontend && npm ci && npm run dev
 ```
 
-Porte DB in locale: transactions `5432`, dashboard `5433`, users `5434`. Il servizio `user` ha già dei default per il suo database; `transaction` e `dashboard` richiedono le variabili `SPRING_DATASOURCE_*`.
+Porte dei DB in locale: transactions `5432`, users `5434`. Il servizio `user` ha dei default per il suo database. Se Docker non è disponibile, `SPRING_DOCKER_COMPOSE_ENABLED=false` disattiva l'avvio automatico del compose da parte di Spring.
+
+## Backup e ripristino
+
+Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
+
+**Sono sullo stesso disco del server:** se il disco si rompe, si perdono anche i backup. Copia ogni tanto la cartella su un altro supporto (NAS, disco esterno, altro PC).
+
+Ripristino su database vuoto:
+
+```bash
+gunzip -c backups/transactions-AAAAMMGG-HHMMSS.sql.gz | docker exec -i pg-trans psql -U user db_transactions
+```
 
 ## Deploy su Kubernetes
 
 1. Imposta `SERVER_USER` / `SERVER_IP` (variabili d'ambiente, oppure modifica i default in `deploy.sh`).
-2. Lancia `DB_PASSWORD=... ./deploy.sh`: costruisce le 4 immagini con un tag unico (`finmanager/*:<timestamp>`), le salva in `.tar`, le copia via `scp` sul server, le importa (Docker; ci sono le righe già pronte per k3s/MicroK8s), crea il Secret `finmanager-db` se manca e applica `k8s/finmanager.yaml`.
-   - `DB_PASSWORD` serve solo la prima volta (quando il Secret non esiste). **Se i database esistono già, usa la password attuale (`password`)**: Postgres applica la password solo alla creazione del volume.
-   - I pod hanno probe di startup/readiness/liveness (`/actuator/health/...`).
-3. L'app è esposta con un `NodePort` su **`:30000`** nel namespace `finmanager`.
-
-Il frontend per K8s viene buildato con URL relativi (`/api/...`) che Nginx inoltra ai servizi interni.
+2. Lancia `DB_PASSWORD=... ANTHROPIC_API_KEY=... ./deploy.sh`: costruisce le immagini con un tag unico, le copia sul server, crea i Secret (`finmanager-db`, `finmanager-anthropic`), rimuove i vecchi dashboard-service/Kafka se presenti e applica `k8s/finmanager.yaml`.
+   - `DB_PASSWORD` serve solo la prima volta. **Se i database esistono già, usa la password attuale (`password`)**: Postgres la applica solo alla creazione del volume.
+   - `ANTHROPIC_API_KEY` si può omettere se il Secret esiste già.
+   - Il volume del vecchio dashboard (`pg-dash-pvc`) non viene cancellato: eliminalo a mano quando vuoi.
+3. L'app è su un `NodePort` **`:30000`**, namespace `finmanager`. I pod hanno probe di salute (`/actuator/health/...`).
 
 ## Struttura del repository
 
 ```
 .
-├── docker-compose.yml            # stack locale completo
+├── docker-compose.yml            # stack locale: db, servizi, frontend, backup, pgAdmin
 ├── deploy.sh                     # build + deploy su Kubernetes via SSH
-├── k8s/finmanager.yaml           # namespace, PVC, db, kafka, servizi, frontend
-├── TODO                          # idee funzionalità (tutte implementate, vedi sotto)
+├── k8s/finmanager.yaml           # namespace, PVC, db, servizi, frontend, CronJob di backup
+├── .env.example                  # password, chiave Anthropic, CORS
+├── TODO                          # idee originali (tutte realizzate)
 ├── financial-manager-user/
 ├── financial-manager-transaction/
-├── financial-manager-dashboard/
 └── financial-manager-frontend/
 ```
 
@@ -127,62 +134,23 @@ Il frontend per K8s viene buildato con URL relativi (`/api/...`) che Nginx inolt
 
 ## Stato del progetto
 
-*Aggiornato al 21/10/2026, su `main` (commit `119441b`).*
+*Aggiornato al 21/10/2026.*
 
-### Roadmap (file `TODO`)
-
-| Idea | Stato |
-|---|---|
-| Transazioni ricorrenti + calendario scadenze | ✅ fatto |
-| Confronto mese su mese | ✅ fatto |
-| Spese fisse vs variabili | ✅ fatto |
-| Obiettivi di risparmio | ✅ fatto |
-| Export Excel/PDF + privacy mode | ✅ fatto |
-| Tag oltre le categorie | ✅ fatto |
-| Budget mensili per categoria *(aggiunto in corsa)* | ✅ fatto |
-
-Tutta la roadmap è completata. Cronologia: avvio il 09/03/2026, funzionalità principali a marzo, deploy Kubernetes e ultime feature a settembre 2026 (49 commit).
-
-### Branch
-
-Tutti i branch sono **già dentro `main`** (0 commit non uniti):
-
-| Branch | Contenuto | Stato |
-|---|---|---|
-| `main` | Tutto il progetto | aggiornato |
-| `dev` | Ricorrenti, obiettivi, fisse/variabili, privacy/export + K8s | unito (PR #1) |
-| `feature/category-remover` | Cancellazione categorie, flag entrata/uscita | unito, obsoleto |
-| `feature/refactor-analytics` | Budget mensili, date picker italiano | unito, obsoleto |
-| `feature/new-insight` | Pagina Confronti, tag, nuovo tema colori | unito, obsoleto |
-| `claude/blissful-pascal-cpvlet` | Branch di lavoro di questa sessione | = `main` |
-
-I tre `feature/*` si possono cancellare senza perdere nulla.
+Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrini e backup. Direzione attuale: servizio personale per due persone sulla rete di casa, con tutti i movimenti caricati dai file della banca e dagli scontrini.
 
 ### Verifiche fatte
 
-- ✅ I tre servizi Spring Boot **compilano** (Java 21) e il frontend **builda**.
-- ✅ `npm run lint`: 0 errori (restano 4 warning sulle dipendenze degli hook React).
-- ✅ **Test** (unitari, senza database): token/CORS (`AuthInterceptor`), import CSV, ricorrenze (data successiva a fine mese, accesso di altri utenti), obiettivi di risparmio, e il calcolo entrate/uscite del dashboard. Restano solo i `contextLoads` di default, che richiedono un database.
-- ⚠️ Non provato end-to-end: nel mio ambiente non c'erano Postgres/Kafka, quindi stack completo, Docker e Kubernetes non sono stati avviati.
+- ✅ **Provato end-to-end** con servizi e Postgres reali (non Docker/Kubernetes): login e isolamento tra due utenti, categorie, import con doppioni, cancellazione categoria, obiettivi e ricorrenze, scontrini (scan → bozza → salvataggio → prezzi → spese per tipo → cancellazione), e la pagina Spesa in un browser (Chromium).
+- ✅ Test unitari (token/CORS, import CSV e doppioni, ricorrenze, obiettivi, JSON delle entità, scontrini); `npm run lint` senza errori (4 warning sulle dipendenze degli hook).
+- ✅ Dump e ripristino di un database verificati.
+- ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
+- ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
-### Problemi risolti
-
-1. **Sicurezza:** ogni richiesta a transaction e dashboard viene validata chiedendo a `user-service` (`GET /api/auth/me`) di chi è il token; il `userId` inviato dal client è ignorato. Lettura, modifica e cancellazione di transazioni, categorie, ricorrenze e obiettivi sono limitate al proprietario (404 altrimenti); nei POST gli `id` del client sono ignorati.
-2. **Dashboard-service:** corretto il calcolo entrata/uscita (confrontava l'enum con una stringa, quindi tutto finiva tra le entrate). **I riepiloghi già salvati nel DB del dashboard sono sbagliati**: vanno ricostruiti svuotando `category_summaries` e azzerando il consumer group (es. cambiando `dashboard-group-v2`) per rileggere gli eventi.
-3. **Cancellazione categoria:** le transazioni e le ricorrenze collegate restano ma senza categoria (mostrate con "—"); i totali non cambiano. Rimosso l'evento Kafka `category-delete-topic`, che non aveva consumatori.
-4. **Eventi Kafka:** ora partono solo dopo il commit del DB (niente eventi per operazioni annullate).
-5. **Configurazione:** password DB e pgAdmin da `.env` (compose) e da un Secret Kubernetes; CORS configurabile con `CORS_ALLOWED_ORIGINS` (prima: fisso su localhost:3000, e `*` nel servizio user); IP/utente del server sovrascrivibili.
-6. **Kubernetes:** immagini con tag unico a ogni deploy (con `:latest` fisso i pod non venivano riavviati), probe di salute, Kafka alla versione `4.0.0` invece di `latest`.
-7. **Pulizia:** rimossi `.factorypath` e i file `application.properties.clean` (obsoleti), log Kafka in DEBUG, README del frontend sostituito.
-
-### Limiti noti e cose ancora aperte
+### Limiti noti e cose aperte
 
 - **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il precedente (un dispositivo alla volta); `user-service` viene interrogato a ogni richiesta (nessuna cache).
-- **Kafka:** se il broker è irraggiungibile al momento dell'invio l'evento si perde (servirebbe un outbox). Il dashboard-service è comunque **ancora non usato** dalla UI, che ricalcola tutto dalle transazioni.
-- **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica supporta solo "ogni mese al giorno X".
-- **Kubernetes:** nessun Ingress/TLS; `ddl-auto=update` al posto di migrazioni (Flyway/Liquibase); password del DB uguale per i tre database.
+- **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica gestisce solo "ogni mese al giorno X".
+- **Import:** se due acquisti identici nello stesso giorno sono davvero distinti ma già uno è presente, il secondo viene saltato (cambia la descrizione per importarlo). Il flag "già presente" dell'anteprima non si aggiorna se modifichi una riga; il controllo definitivo avviene al salvataggio.
+- **Scontrini:** le foto non vengono conservate (solo i dati estratti); formato HEIC non supportato dal server (il browser di solito lo converte); il costo per scontrino va misurato.
+- **Kubernetes:** nessun Ingress/TLS (non serve sulla rete di casa); `ddl-auto=update` al posto di migrazioni (Flyway/Liquibase); stessa password per i due database.
 - **Frontend:** bundle > 500 kB (manca il code-splitting).
-
-### Prossimi passi
-
-Dipendono dalla direzione del progetto: in particolare cosa fare del dashboard-service (usarlo nella UI o rimuoverlo) e se servono ricorrenze non mensili.

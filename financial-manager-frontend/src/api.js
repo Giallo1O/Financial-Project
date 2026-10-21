@@ -33,7 +33,9 @@ export async function authenticatedFetch(url, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(`HTTP ${response.status}`);
+    // Se il server spiega il motivo (campo "message") lo uso, altrimenti il codice HTTP
+    const body = await response.json().catch(() => null);
+    const error = new Error(body?.message || `HTTP ${response.status}`);
     error.status = response.status;
     throw error;
   }
@@ -367,3 +369,56 @@ export async function processAutoRecurringTransactions() {
   return await response.json();
 }
 
+// ─── Scontrini (spesa alimentare) ──────────────────────────────────────────
+
+/** Legge 1-4 foto/PDF dello stesso scontrino con l'AI; restituisce una bozza, non salva nulla. */
+export async function scanReceipt(files) {
+  const formData = new FormData();
+  files.forEach(f => formData.append('file', f));
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/scan`, {
+    method: 'POST',
+    body: formData,
+  });
+  return await response.json();
+}
+
+export async function saveReceipt(receipt) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(receipt),
+  });
+  return await response.json();
+}
+
+export async function fetchReceipts() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts`);
+  return await response.json();
+}
+
+export async function fetchReceipt(id) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/${id}`);
+  return await response.json();
+}
+
+export async function deleteReceipt(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/receipts/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchProducts() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/products`);
+  return await response.json();
+}
+
+export async function fetchProductHistory(name, unit) {
+  const response = await authenticatedFetch(
+    `${TRANSACTION_API}/api/receipts/products/history?name=${encodeURIComponent(name)}&unit=${encodeURIComponent(unit)}`
+  );
+  return await response.json();
+}
+
+/** from/to in formato yyyy-MM-dd */
+export async function fetchFoodSpending(from, to) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/spending?from=${from}&to=${to}`);
+  return await response.json();
+}

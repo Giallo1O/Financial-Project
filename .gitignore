@@ -38,3 +38,6 @@ Thumbs.db
 
 # Eclipse
 .factorypath
+
+# Backup dei database (docker compose)
+backups/
