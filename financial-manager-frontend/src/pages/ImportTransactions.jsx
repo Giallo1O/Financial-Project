@@ -107,6 +107,12 @@ const ImportTransactions = () => {
     setTransactions(prev => prev.filter(t => t.tempId !== tempId));
   };
 
+  const duplicateCount = transactions.filter(t => t.duplicate).length;
+
+  const handleRemoveDuplicates = () => {
+    setTransactions(prev => prev.filter(t => !t.duplicate));
+  };
+
   const handleNextToConfirm = () => {
     if (transactions.length === 0) {
       setMessage({ text: 'No transactions to import.', type: 'error' });
@@ -118,9 +124,9 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      // tempId serve solo alla UI: non va inviato al backend
+      // tempId e duplicate servono solo alla UI: non vanno inviati al backend
       // eslint-disable-next-line no-unused-vars
-      const payload = transactions.map(({ tempId, transactionDate, ...rest }) => ({
+      const payload = transactions.map(({ tempId, duplicate, transactionDate, ...rest }) => ({
         ...rest,
         transactionDate: format(transactionDate, 'yyyy-MM-dd'),
         type: rest.type.toUpperCase()
@@ -129,8 +135,12 @@ const ImportTransactions = () => {
       const res = await bulkImportTransactions(payload);
 
       if (res.ok) {
-        setMessage({ text: 'Success! Transactions imported.', type: 'success' });
-        setTimeout(() => navigate('/transactions'), 1500);
+        const { imported, skipped } = await res.json();
+        setMessage({
+          text: `Importate ${imported} transazioni` + (skipped ? `, ${skipped} saltate perché già presenti.` : '.'),
+          type: 'success'
+        });
+        setTimeout(() => navigate('/transactions'), skipped ? 3000 : 1500);
       } else {
         setMessage({ text: 'Import failed. Please try again.', type: 'error' });
       }
@@ -231,6 +241,11 @@ const ImportTransactions = () => {
             <div className="preview-actions">
               <h3>Verify & Polish ({transactions.length} rows)</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
+                {duplicateCount > 0 && (
+                  <button className="btn btn-glass" onClick={handleRemoveDuplicates}>
+                    Rimuovi {duplicateCount} già present{duplicateCount === 1 ? 'e' : 'i'}
+                  </button>
+                )}
                 <button className="btn btn-glass" onClick={() => setCurrentStep(1)}>
                   Back
                 </button>
@@ -254,8 +269,13 @@ const ImportTransactions = () => {
                 </thead>
                 <tbody>
                   {transactions.map(t => (
-                    <tr key={t.tempId}>
+                    <tr key={t.tempId} style={t.duplicate ? { opacity: 0.55 } : undefined}>
                       <td>
+                        {t.duplicate && (
+                          <span title="Esiste già un movimento uguale: verrà saltato" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
+                            Già presente
+                          </span>
+                        )}
                         <input 
                           type="text" 
                           value={t.description || ''} 

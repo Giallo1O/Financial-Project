@@ -1,6 +1,5 @@
 import { getUserInfo, getToken, removeAuth } from './auth';
 
-const DASHBOARD_API = import.meta.env.VITE_DASHBOARD_API_URL || 'http://localhost:8081';
 const TRANSACTION_API = import.meta.env.VITE_TRANSACTION_API_URL || 'http://localhost:8080';
 const USER_API = import.meta.env.VITE_USER_API_URL || 'http://localhost:8082';
 
@@ -239,29 +238,6 @@ export async function bulkImportTransactions(transactions) {
     body: JSON.stringify(payload),
   });
   return response;
-}
-
-// ─── Dashboard ────────────────────────────────────────────────────────────
-
-export async function fetchDashboardStats({ month, year } = {}) {
-  const userId = getCurrentUserId();
-  let url = `${DASHBOARD_API}/api/dashboard/stats?userId=${encodeURIComponent(userId)}`;
-  if (month != null && year != null) {
-    url += `&month=${month}&year=${year}`;
-  }
-  const response = await authenticatedFetch(url);
-  const data = await response.json();
-  
-  if (data.categoryExpenses) {
-    const categories = await fetchCategories();
-    const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
-    data.categoryExpenses = data.categoryExpenses.map(item => ({
-        ...item,
-        categoryColor: categoryMap[item.categoryId] ? categoryMap[item.categoryId].color : '#6b7280'
-    }));
-  }
-  
-  return data;
 }
 
 // ─── Savings Goals ────────────────────────────────────────────────────────

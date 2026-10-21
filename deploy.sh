@@ -23,9 +23,6 @@ echo "========================================="
 echo "-> Costruisco transaction-service..."
 docker build -t finmanager/transaction-service:$TAG ./financial-manager-transaction
 
-echo "-> Costruisco dashboard-service..."
-docker build -t finmanager/dashboard-service:$TAG ./financial-manager-dashboard
-
 echo "-> Costruisco user-service..."
 docker build -t finmanager/user-service:$TAG ./financial-manager-user
 
@@ -33,7 +30,6 @@ docker build -t finmanager/user-service:$TAG ./financial-manager-user
 echo "-> Costruisco frontend-service..."
 docker build \
   --build-arg VITE_TRANSACTION_API_URL=/api/transaction \
-  --build-arg VITE_DASHBOARD_API_URL=/api/dashboard \
   --build-arg VITE_USER_API_URL=/api/user \
   -t finmanager/frontend-service:$TAG ./financial-manager-frontend
 
@@ -42,7 +38,6 @@ echo "========================================="
 echo "2. Salvataggio immagini in formato tar..."
 echo "========================================="
 docker save finmanager/transaction-service:$TAG > transaction.tar
-docker save finmanager/dashboard-service:$TAG > dashboard.tar
 docker save finmanager/user-service:$TAG > user.tar
 docker save finmanager/frontend-service:$TAG > frontend.tar
 
@@ -63,14 +58,14 @@ ssh $SERVER_USER@$SERVER_IP << EOF
   
   echo "-> Importo le immagini in K8s..."
   # Se usi k3s, decommenta la riga sotto e commenta docker load:
-  # sudo k3s ctr images import transaction.tar dashboard.tar user.tar frontend.tar
+  # sudo k3s ctr images import transaction.tar user.tar frontend.tar
   
   # Se usi MicroK8s, decommenta la riga sotto:
-  # microk8s ctr image import transaction.tar dashboard.tar user.tar frontend.tar
+  # microk8s ctr image import transaction.tar user.tar frontend.tar
   
   # Se usi Docker normale nel server K8s:
   sudo docker load < transaction.tar
-  sudo docker load < dashboard.tar
+  sudo docker load <
   sudo docker load < user.tar
   sudo docker load < frontend.tar
   
@@ -83,6 +78,10 @@ ssh $SERVER_USER@$SERVER_IP << EOF
     fi
     kubectl -n finmanager create secret generic finmanager-db --from-literal=password='$DB_PASSWORD'
   fi
+
+  echo "-> Rimuovo i vecchi dashboard-service e Kafka, se presenti (il volume pg-dash-pvc resta: eliminalo a mano quando vuoi)..."
+  kubectl -n finmanager delete deployment dashboard-service kafka pg-dash --ignore-not-found
+  kubectl -n finmanager delete service dashboard-service kafka pg-dash --ignore-not-found
 
   echo "-> Applico i manifest Kubernetes (immagini taggate $TAG)..."
   sed "s#\(image: finmanager/[a-z-]*\):latest#\1:$TAG#" k8s/finmanager.yaml | kubectl apply -f -

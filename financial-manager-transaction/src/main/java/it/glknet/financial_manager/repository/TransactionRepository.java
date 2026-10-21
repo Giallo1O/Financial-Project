@@ -1,5 +1,6 @@
 package it.glknet.financial_manager.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,8 @@ import it.glknet.financial_manager.model.Transaction;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
     List<Transaction> findByUserId(UUID userId);
+
+    List<Transaction> findByUserIdAndTransactionDateBetween(UUID userId, LocalDate from, LocalDate to);
 
     @Modifying
     @Query("UPDATE Transaction t SET t.categoryId = null WHERE t.categoryId = :categoryId")

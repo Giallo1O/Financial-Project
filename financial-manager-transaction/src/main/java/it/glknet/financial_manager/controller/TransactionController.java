@@ -1,5 +1,6 @@
 package it.glknet.financial_manager.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,10 +18,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.glknet.financial_manager.config.AuthInterceptor;
+import it.glknet.financial_manager.dto.ImportResult;
+import it.glknet.financial_manager.dto.ImportRow;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.service.CsvImportService;
-import it.glknet.financial_manager.service.TransactionProducer;
 import it.glknet.financial_manager.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,7 +34,6 @@ public class TransactionController {
 
 	private final TransactionService service;
 	private final CsvImportService csvImportService;
-	private final TransactionProducer transactionProducer;
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
@@ -66,17 +67,23 @@ public class TransactionController {
 	}
 
 	@PostMapping("/parse-csv")
-	public ResponseEntity<List<TransactionRequest>> parseCsv(@RequestParam("file") MultipartFile file) {
-		return ResponseEntity.ok(csvImportService.parseCsv(file));
+	public ResponseEntity<List<ImportRow>> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestParam("file") MultipartFile file) {
+		List<TransactionRequest> rows = csvImportService.parseCsv(file);
+		List<Boolean> duplicates = service.markDuplicates(userId, rows);
+		List<ImportRow> preview = new ArrayList<>();
+		for (int i = 0; i < rows.size(); i++) {
+			TransactionRequest r = rows.get(i);
+			preview.add(new ImportRow(r.description(), r.amount(), r.type(), r.categoryId(), r.transactionDate(),
+					duplicates.get(i)));
+		}
+		return ResponseEntity.ok(preview);
 	}
 
 	@PostMapping("/bulk-import")
-	public ResponseEntity<Void> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+	public ResponseEntity<ImportResult> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestBody List<TransactionRequest> requests) {
-		for (TransactionRequest request : requests) {
-			transactionProducer.sendImportRequest(withUser(request, userId));
-		}
-		return ResponseEntity.accepted().build();
+		return ResponseEntity.ok(service.importAll(userId, requests.stream().map(r -> withUser(r, userId)).toList()));
 	}
 
 	private static TransactionRequest withUser(TransactionRequest r, UUID userId) {
