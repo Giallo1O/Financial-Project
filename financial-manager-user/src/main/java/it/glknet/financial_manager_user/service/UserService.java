@@ -60,4 +60,14 @@ public class UserService {
                 .userId(user.getId())
                 .build();
     }
+
+    public AuthResponse validate(String token) {
+        User user = userRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid token"));
+        return AuthResponse.builder()
+                .token(token)
+                .username(user.getUsername())
+                .userId(user.getId())
+                .build();
+    }
 }

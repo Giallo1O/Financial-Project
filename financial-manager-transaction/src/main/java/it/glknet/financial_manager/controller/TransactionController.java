@@ -11,11 +11,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
+import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.service.CsvImportService;
@@ -36,17 +38,19 @@ public class TransactionController {
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public Transaction create(@RequestBody TransactionRequest request) {
-		return service.createTransaction(request);
+	public Transaction create(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestBody TransactionRequest request) {
+		return service.createTransaction(withUser(request, userId));
 	}
 
 	/**
-	 * GET /api/transactions?userId=xxx
-	 * GET /api/transactions?userId=xxx&month=3&year=2026
+	 * GET /api/transactions
+	 * GET /api/transactions?month=3&year=2026
+	 * L'utente e' quello del token, non un parametro.
 	 */
 	@GetMapping
 	public List<Transaction> getAll(
-			@RequestParam UUID userId,
+			@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam(required = false) Integer month,
 			@RequestParam(required = false) Integer year) {
 
@@ -57,8 +61,9 @@ public class TransactionController {
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteTransaction(@PathVariable UUID id) {
-		service.deleteTransaction(id);
+	public ResponseEntity<Void> deleteTransaction(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@PathVariable UUID id) {
+		service.deleteTransaction(id, userId);
 		return ResponseEntity.noContent().build();
 	}
 
@@ -68,11 +73,17 @@ public class TransactionController {
 	}
 
 	@PostMapping("/bulk-import")
-	public ResponseEntity<Void> bulkImport(@RequestBody List<TransactionRequest> requests) {
+	public ResponseEntity<Void> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestBody List<TransactionRequest> requests) {
 		for (TransactionRequest request : requests) {
-			transactionProducer.sendImportRequest(request);
+			transactionProducer.sendImportRequest(withUser(request, userId));
 		}
 		return ResponseEntity.accepted().build();
+	}
+
+	private static TransactionRequest withUser(TransactionRequest r, UUID userId) {
+		return new TransactionRequest(r.description(), r.amount(), r.type(), r.categoryId(), userId,
+				r.transactionDate());
 	}
 
 }

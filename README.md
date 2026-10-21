@@ -165,9 +165,9 @@ I tre `feature/*` si possono cancellare senza perdere nulla.
 
 ### Problemi noti e cose da sistemare
 
-Ordinati per importanza.
+Ordinati per importanza (il punto 1 è già stato affrontato).
 
-1. **Sicurezza — le API non verificano l'identità.** Il login genera un token, ma nessun servizio lo controlla: il `userId` arriva come parametro e chiunque conosca l'UUID di un altro utente può leggere o modificare i suoi dati. Anche `PUT`/`DELETE` su categorie, obiettivi e ricorrenti non controllano che la risorsa appartenga all'utente. Serve validare il token (o passare a JWT) e filtrare per utente lato server.
+1. **Sicurezza — ✅ risolto (con limiti).** Ogni richiesta a transaction e dashboard deve avere `Authorization: Bearer <token>`: i servizi chiedono a `user-service` (`GET /api/auth/me`) di chi è il token e usano **solo** quello `userId`, ignorando quello inviato dal client. Lettura, modifica e cancellazione di transazioni, categorie, ricorrenze e obiettivi sono limitate al proprietario (altrimenti 404). Limiti rimasti: il token non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il token precedente (un solo dispositivo alla volta); c'è una chiamata HTTP a `user-service` per ogni richiesta (nessuna cache); CORS dell'user-service è ancora `*`.
 2. **Dashboard service: bug nel calcolo entrata/uscita.** In `DashboardService` si confronta l'enum con una stringa (`event.type().equals("USCITA")`), che è sempre `false`: tutto viene contato come "entrata". Oggi non si vede perché la dashboard del frontend **non usa** `/api/dashboard/stats` ma ricalcola tutto dalle transazioni. Il servizio dashboard e Kafka sono quindi di fatto non sfruttati dalla UI: o si corregge e li si usa, o si decide di eliminarli.
 3. **Evento di cancellazione categoria non gestito.** Il servizio transaction pubblica su `category-delete-topic`, ma il dashboard non lo ascolta (esiste solo il DTO) e il topic non è dichiarato in `KafkaTopicConfig`. Inoltre eliminando una categoria le transazioni collegate restano con un `categoryId` orfano.
 4. **Cancellazione transazioni:** `deleteTransaction` fa la delete su DB e poi invia l'evento Kafka senza transazione/outbox; se Kafka è giù i due stati si disallineano (stesso discorso per la creazione).
@@ -178,7 +178,6 @@ Ordinati per importanza.
 
 ### Prossimi passi consigliati
 
-1. Autenticazione reale sulle API (punto 1).
-2. Decidere il destino del dashboard-service (correggere il bug e usarlo, oppure rimuoverlo) e gestire la cancellazione categoria (punti 2–3).
-3. Aggiungere test sulla logica chiave (ricorrenze, import CSV, obiettivi) e sistemare il lint.
-4. Spostare segreti/config fuori dal codice e rendere il deploy K8s più robusto.
+1. Decidere il destino del dashboard-service (correggere il bug e usarlo, oppure rimuoverlo) e gestire la cancellazione categoria (punti 2–3).
+2. Aggiungere test sulla logica chiave (ricorrenze, import CSV, obiettivi) e sistemare il lint.
+3. Spostare segreti/config fuori dal codice e rendere il deploy K8s più robusto.

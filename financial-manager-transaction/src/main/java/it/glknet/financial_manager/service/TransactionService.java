@@ -3,12 +3,15 @@ package it.glknet.financial_manager.service;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import it.glknet.financial_manager.dto.TransactionDeleteEvent;
 import it.glknet.financial_manager.dto.TransactionEvent;
 import it.glknet.financial_manager.dto.TransactionRequest;
+import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.repository.CategoryRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
@@ -28,8 +31,11 @@ public class TransactionService {
 	public Transaction createTransaction(TransactionRequest request) {
 		// Controllo se esiste la categoria (se fornita)
 		if (request.categoryId() != null) {
-			categoryRepository.findById(request.categoryId())
+			Category category = categoryRepository.findById(request.categoryId())
 					.orElseThrow(() -> new IllegalArgumentException("Errore: La categoria inserita non esiste!"));
+			if (!category.getUserId().equals(request.userId())) {
+				throw new IllegalArgumentException("Errore: La categoria inserita non esiste!");
+			}
 		}
 
 		// 1. Salvataggio su DB
@@ -56,9 +62,10 @@ public class TransactionService {
 		return repository.findByUserIdAndMonthAndYear(userId, month, year);
 	}
 
-	public void deleteTransaction(UUID id) {
-		// 1. Trova la transazione (serve per sapere importo e categoria da stornare)
-		Transaction tx = repository.findById(id).orElseThrow(() -> new RuntimeException("Transazione non trovata"));
+	public void deleteTransaction(UUID id, UUID userId) {
+		// 1. Trova la transazione (serve per sapere importo e categoria da stornare); solo se e' dell'utente
+		Transaction tx = repository.findById(id).filter(t -> userId.equals(t.getUserId()))
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transazione non trovata"));
 
 		// 2. Elimina dal Database
 		repository.delete(tx);

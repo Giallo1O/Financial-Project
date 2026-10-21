@@ -13,9 +13,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RestController;
 
+import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.dto.CategoryDeleteEvent;
 import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.repository.CategoryRepository;
@@ -33,21 +34,25 @@ public class CategoryController {
 
 	// 1. Ottieni tutte le categorie di un utente
 	@GetMapping
-	public ResponseEntity<List<Category>> getUserCategories(@RequestParam UUID userId) {
+	public ResponseEntity<List<Category>> getUserCategories(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
 		return ResponseEntity.ok(categoryRepository.findByUserId(userId));
 	}
 
 	// 2. Crea una nuova categoria
 	@PostMapping
-	public ResponseEntity<Category> createCategory(@RequestBody Category category) {
+	public ResponseEntity<Category> createCategory(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestBody Category category) {
+		category.setId(null); // evita di sovrascrivere categorie esistenti
+		category.setUserId(userId);
 		Category savedCategory = categoryRepository.save(category);
 		return ResponseEntity.status(HttpStatus.CREATED).body(savedCategory);
 	}
 
 	// 3. Modifica una categoria esistente
 	@PutMapping("/{id}")
-	public ResponseEntity<Category> updateCategory(@PathVariable UUID id, @RequestBody Category categoryDetails) {
-		return categoryRepository.findById(id).map(category -> {
+	public ResponseEntity<Category> updateCategory(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@PathVariable UUID id, @RequestBody Category categoryDetails) {
+		return categoryRepository.findById(id).filter(c -> userId.equals(c.getUserId())).map(category -> {
 			category.setName(categoryDetails.getName());
 			category.setColor(categoryDetails.getColor());
 			category.setIcon(categoryDetails.getIcon());
@@ -65,8 +70,9 @@ public class CategoryController {
 
 	// 4. Elimina una categoria
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteCategory(@PathVariable UUID id) {
-		categoryRepository.findById(id).ifPresent(category -> {
+	public ResponseEntity<Void> deleteCategory(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@PathVariable UUID id) {
+		categoryRepository.findById(id).filter(c -> userId.equals(c.getUserId())).ifPresent(category -> {
 			categoryRepository.deleteById(id);
 			// Invia evento Kafka per notificare il microservizio dashboard
 			kafkaProducerService.sendCategoryDeleteEvent(new CategoryDeleteEvent(id, category.getUserId(), category.isExpense()));

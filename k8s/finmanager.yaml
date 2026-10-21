@@ -248,6 +248,8 @@ spec:
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://pg-trans:5432/db_transactions
+            - name: USER_SERVICE_URL
+              value: http://user-service:8082
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:29092
             - name: SPRING_DATASOURCE_USERNAME
@@ -287,6 +289,8 @@ spec:
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://pg-dash:5432/db_dashboard
+            - name: USER_SERVICE_URL
+              value: http://user-service:8082
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:29092
             - name: SPRING_DATASOURCE_USERNAME

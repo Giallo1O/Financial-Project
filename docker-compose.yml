@@ -90,6 +90,7 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
+      - USER_SERVICE_URL=http://user-service:8082
     depends_on:
       postgres-transactions:
         condition: service_healthy
@@ -106,6 +107,7 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
+      - USER_SERVICE_URL=http://user-service:8082
     depends_on:
       postgres-dashboard:
         condition: service_healthy

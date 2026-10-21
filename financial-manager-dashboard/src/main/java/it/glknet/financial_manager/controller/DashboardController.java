@@ -6,10 +6,12 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.CrossOrigin;
 
+import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.model.CategorySummary;
 import it.glknet.financial_manager.repository.CategorySummaryRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,7 @@ public class DashboardController {
 
 	@GetMapping("/stats")
 	public ResponseEntity<List<CategorySummary>> getStats(
-			@RequestParam UUID userId,
+			@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam Integer month,
 			@RequestParam Integer year) {
 		return ResponseEntity.ok(repository.findByUserIdAndMonthAndYear(userId, month, year));
