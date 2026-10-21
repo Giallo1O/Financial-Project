@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, FileSpreadsheet, FileText } from 'lucide-react';
 import TransactionsForm from '../components/TransactionsForm';
 import TransactionHistory from '../components/TransactionHistory';
 import { fetchTransactions, createTransaction, deleteTransaction } from '../api';
+import { exportTransactionsToExcel, exportTransactionsToPdf } from '../utils/exportUtils';
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -45,7 +46,7 @@ const Transactions = () => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <header className="dashboard-header" style={{ marginBottom: '2rem' }}>
+      <header className="dashboard-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ 
             width: '50px', height: '50px', 
@@ -60,7 +61,54 @@ const Transactions = () => {
             <p className="text-muted text-sm">Gestisci le tue entrate e uscite in modo semplice.</p>
           </div>
         </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            onClick={() => exportTransactionsToExcel(transactions)}
+            className="btn-export"
+            title="Esporta in foglio Excel (.xlsx)"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.6rem 1rem',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              borderRadius: 'var(--radius-md)',
+              color: '#34d399',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.875rem'
+            }}
+          >
+            <FileSpreadsheet size={18} />
+            <span>Esporta Excel</span>
+          </button>
+
+          <button
+            onClick={() => exportTransactionsToPdf(transactions)}
+            className="btn-export"
+            title="Esporta estratto conto in PDF (.pdf)"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.6rem 1rem',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: 'var(--radius-md)',
+              color: '#f87171',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '0.875rem'
+            }}
+          >
+            <FileText size={18} />
+            <span>Esporta PDF</span>
+          </button>
+        </div>
       </header>
+
 
       <div style={{ 
         display: 'grid', 

@@ -1,0 +1,378 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finmanager
+---
+# ==========================================
+# DATABASES & STORAGE
+# ==========================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pg-trans-pvc
+  namespace: finmanager
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-trans
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: pg-trans
+  template:
+    metadata:
+      labels:
+        app: pg-trans
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: db_transactions
+            - name: POSTGRES_USER
+              value: user
+            - name: POSTGRES_PASSWORD
+              value: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pg-trans-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-trans
+  namespace: finmanager
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: pg-trans
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pg-dash-pvc
+  namespace: finmanager
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-dash
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: pg-dash
+  template:
+    metadata:
+      labels:
+        app: pg-dash
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: db_dashboard
+            - name: POSTGRES_USER
+              value: user
+            - name: POSTGRES_PASSWORD
+              value: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pg-dash-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-dash
+  namespace: finmanager
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: pg-dash
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pg-users-pvc
+  namespace: finmanager
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-users
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: pg-users
+  template:
+    metadata:
+      labels:
+        app: pg-users
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: db_users
+            - name: POSTGRES_USER
+              value: user
+            - name: POSTGRES_PASSWORD
+              value: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: pg-users-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-users
+  namespace: finmanager
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: pg-users
+---
+# ==========================================
+# KAFKA
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:latest
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:29092"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://localhost:9092,INTERNAL://kafka:29092"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "INTERNAL"
+            - name: KAFKA_CLUSTER_ID
+              value: "MkU3OEVBNTcwNTJDRDRCOEY"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: finmanager
+spec:
+  ports:
+    - port: 9092
+      name: external
+    - port: 29092
+      name: internal
+  selector:
+    app: kafka
+---
+# ==========================================
+# MICROSERVICES
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: app
+          image: finmanager/transaction-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://pg-trans:5432/db_transactions
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:29092
+            - name: SPRING_DATASOURCE_USERNAME
+              value: user
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-service
+  namespace: finmanager
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: transaction-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-service
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: dashboard-service
+  template:
+    metadata:
+      labels:
+        app: dashboard-service
+    spec:
+      containers:
+        - name: app
+          image: finmanager/dashboard-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://pg-dash:5432/db_dashboard
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:29092
+            - name: SPRING_DATASOURCE_USERNAME
+              value: user
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: finmanager
+spec:
+  ports:
+    - port: 8081
+  selector:
+    app: dashboard-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: app
+          image: finmanager/user-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://pg-users:5432/db_users
+            - name: SPRING_DATASOURCE_USERNAME
+              value: user
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: finmanager
+spec:
+  ports:
+    - port: 8082
+  selector:
+    app: user-service
+---
+# ==========================================
+# FRONTEND (EXPOSED VIA NODEPORT)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-service
+  namespace: finmanager
+spec:
+  selector:
+    matchLabels:
+      app: frontend-service
+  template:
+    metadata:
+      labels:
+        app: frontend-service
+    spec:
+      containers:
+        - name: frontend
+          image: finmanager/frontend-service:latest
+          imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: finmanager
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      nodePort: 30000
+  selector:
+    app: frontend-service

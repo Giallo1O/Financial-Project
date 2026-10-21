@@ -12,6 +12,7 @@ const Categories = () => {
   const [icon, setIcon] = useState('tag');
   const [isExpense, setIsExpense] = useState(true);
   const [budget, setBudget] = useState('');
+  const [isFixed, setIsFixed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [editingCategory, setEditingCategory] = useState(null);
@@ -40,12 +41,22 @@ const Categories = () => {
     setIsSubmitting(true);
     setMessage({ type: '', text: '' });
     try {
+      const categoryPayload = {
+        name,
+        color,
+        icon,
+        expense: isExpense,
+        budget: Number(budget),
+        fixed: isExpense ? isFixed : false,
+        tags
+      };
+
       if (editingCategory) {
-        await updateCategory(editingCategory.id, { name, color, icon, expense: isExpense, budget: Number(budget), tags });
+        await updateCategory(editingCategory.id, categoryPayload);
         setMessage({ type: 'success', text: 'Category updated successfully!' });
         setEditingCategory(null);
       } else {
-        await createCategory({ name, color, icon, expense: isExpense, budget: Number(budget), tags });
+        await createCategory(categoryPayload);
         setMessage({ type: 'success', text: 'Category created successfully!' });
       }
       setName('');
@@ -53,6 +64,7 @@ const Categories = () => {
       setIcon('tag');
       setIsExpense(true);
       setBudget('');
+      setIsFixed(false);
       setTags([]);
       loadCategories(); // Refresh list
     } catch (err) {
@@ -69,6 +81,7 @@ const Categories = () => {
     setIcon(category.icon || 'tag');
     setIsExpense(category.expense);
     setBudget(category.budget || '');
+    setIsFixed(Boolean(category.fixed));
     setTags(category.tags || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -80,6 +93,7 @@ const Categories = () => {
     setIcon('tag');
     setIsExpense(true);
     setBudget('');
+    setIsFixed(false);
     setTags([]);
     setMessage({ type: '', text: '' });
   };
@@ -148,6 +162,7 @@ const Categories = () => {
                     <span style={{ fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.name}</span>
                     <span style={{ fontSize: '0.7rem', color: cat.expense ? 'var(--danger)' : 'var(--success)', opacity: 0.8 }}>
                       {cat.expense ? 'Uscita' : 'Entrata'}
+                      {cat.expense && (cat.fixed ? ' • Fissa' : ' • Variabile')}
                       {cat.budget > 0 && ` • €${cat.budget}`}
                     </span>
                     {cat.tags && cat.tags.length > 0 && (
@@ -373,6 +388,21 @@ const Categories = () => {
                   />
                 </div>
               </div>
+
+              {isExpense && (
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    id="fixedCheckbox"
+                    checked={isFixed}
+                    onChange={(e) => setIsFixed(e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent-primary)' }}
+                  />
+                  <label htmlFor="fixedCheckbox" style={{ margin: 0, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Spesa Fissa / Inderogabile (Necessità: affitto, bollette, mutuo)
+                  </label>
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Icona (Lucide ID)</label>

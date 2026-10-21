@@ -7,6 +7,8 @@ import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Comparisons from './pages/Comparisons';
 import ImportTransactions from './pages/ImportTransactions';
+import SavingsGoals from './pages/SavingsGoals';
+import RecurringTransactions from './pages/RecurringTransactions';
 import ProtectedRoute from './components/ProtectedRoute';
 
 
@@ -22,8 +24,10 @@ function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/budgets" element={<Budgets />} />
-          <Route path="/categories" element={<Categories />} />
+          <Route path="/recurring" element={<RecurringTransactions />} />
+          <Route path="/goals" element={<SavingsGoals />} />
           <Route path="/comparisons" element={<Comparisons />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="/import" element={<ImportTransactions />} />
         </Route>
 

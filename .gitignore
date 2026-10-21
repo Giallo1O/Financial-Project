@@ -16,6 +16,7 @@ bin/
 out/
 *.class
 *.jar
+*.tar
 *.war
 *.ear
 
