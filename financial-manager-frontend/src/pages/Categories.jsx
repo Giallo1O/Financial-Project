@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
+import CategoryRules from '../components/CategoryRules';
 import '../components/Components.css'; // Corrected path
 
 
@@ -483,6 +484,8 @@ const Categories = () => {
           </div>
         </section>
       </div>
+
+      <CategoryRules categories={categories} />
     </div>
   );
 };

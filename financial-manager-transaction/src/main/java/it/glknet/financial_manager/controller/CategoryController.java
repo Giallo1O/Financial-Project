@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.repository.CategoryRepository;
+import it.glknet.financial_manager.repository.CategoryRuleRepository;
 import it.glknet.financial_manager.repository.RecurringTransactionRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class CategoryController {
 	private final CategoryRepository categoryRepository;
 	private final TransactionRepository transactionRepository;
 	private final RecurringTransactionRepository recurringRepository;
+	private final CategoryRuleRepository ruleRepository;
 
 	// 1. Ottieni tutte le categorie di un utente
 	@GetMapping
@@ -77,6 +79,7 @@ public class CategoryController {
 			// Le transazioni restano (i totali non cambiano) ma perdono la categoria
 			transactionRepository.detachCategory(id);
 			recurringRepository.detachCategory(id);
+			ruleRepository.deleteByCategoryId(id);
 			categoryRepository.delete(category);
 		});
 		return ResponseEntity.noContent().build();

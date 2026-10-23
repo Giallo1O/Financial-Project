@@ -33,6 +33,7 @@ const ImportTransactions = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [learn, setLearn] = useState(true); // ricorda le categorie scelte per i prossimi import
   
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -84,6 +85,7 @@ const ImportTransactions = () => {
       setTransactions(data.map(t => ({
         ...t, 
         tempId: crypto.randomUUID(),
+        suggestedCategoryId: t.categoryNote ? t.categoryId : null, // categoria proposta da una regola
         type: t.type || 'USCITA',
         transactionDate: t.transactionDate ? parseISO(t.transactionDate) : new Date()
       })));
@@ -124,15 +126,15 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      // tempId, duplicate e duplicateNote servono solo alla UI: non vanno inviati al backend
+      // i campi usati solo dalla UI non vanno inviati al backend
       // eslint-disable-next-line no-unused-vars
-      const payload = transactions.map(({ tempId, duplicate, duplicateNote, transactionDate, ...rest }) => ({
+      const payload = transactions.map(({ tempId, duplicate, duplicateNote, categoryNote, suggestedCategoryId, transactionDate, ...rest }) => ({
         ...rest,
         transactionDate: format(transactionDate, 'yyyy-MM-dd'),
         type: rest.type.toUpperCase()
       }));
       
-      const res = await bulkImportTransactions(payload);
+      const res = await bulkImportTransactions(payload, learn);
 
       if (res.ok) {
         const { imported, skipped } = await res.json();
@@ -323,6 +325,11 @@ const ImportTransactions = () => {
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
                         </select>
+                        {t.categoryNote && t.categoryId === t.suggestedCategoryId && (
+                          <span title="Categoria suggerita da una tua regola" style={{ fontSize: '0.75rem', color: 'var(--accent-secondary)' }}>
+                            {t.categoryNote}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <button className="btn-icon" onClick={() => handleRemoveRow(t.tempId)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -362,6 +369,15 @@ const ImportTransactions = () => {
                 <span className="stat-label">Expenses</span>
               </div>
             </div>
+
+            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', margin: '1rem 0', cursor: 'pointer' }}>
+              <input type="checkbox" checked={learn} onChange={(e) => setLearn(e.target.checked)}
+                style={{ width: 'auto', margin: 0, padding: 0 }} />
+              <span>
+                Ricorda le categorie scelte per i prossimi import
+                <span className="text-muted text-sm"> ({transactions.filter(t => t.categoryId).length} righe con categoria)</span>
+              </span>
+            </label>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
               <button className="btn btn-glass" onClick={() => setCurrentStep(2)}>

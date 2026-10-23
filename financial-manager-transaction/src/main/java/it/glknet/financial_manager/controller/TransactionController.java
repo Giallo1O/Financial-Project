@@ -22,6 +22,7 @@ import it.glknet.financial_manager.dto.ImportResult;
 import it.glknet.financial_manager.dto.ImportRow;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
+import it.glknet.financial_manager.service.CategoryRuleService;
 import it.glknet.financial_manager.service.CsvImportService;
 import it.glknet.financial_manager.service.TransactionService;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class TransactionController {
 
 	private final TransactionService service;
 	private final CsvImportService csvImportService;
+	private final CategoryRuleService ruleService;
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
@@ -71,19 +73,28 @@ public class TransactionController {
 			@RequestParam("file") MultipartFile file) {
 		List<TransactionRequest> rows = csvImportService.parseCsv(file);
 		List<String> duplicates = service.findDuplicates(userId, rows);
+		List<CategoryRuleService.Suggestion> suggestions = ruleService.suggest(userId, rows);
 		List<ImportRow> preview = new ArrayList<>();
 		for (int i = 0; i < rows.size(); i++) {
 			TransactionRequest r = rows.get(i);
-			preview.add(new ImportRow(r.description(), r.amount(), r.type(), r.categoryId(), r.transactionDate(),
-					duplicates.get(i) != null, duplicates.get(i)));
+			CategoryRuleService.Suggestion s = suggestions.get(i);
+			preview.add(new ImportRow(r.description(), r.amount(), r.type(), s != null ? s.categoryId() : r.categoryId(),
+					r.transactionDate(), duplicates.get(i) != null, duplicates.get(i),
+					s != null ? "Regola: " + s.keyword() : null));
 		}
 		return ResponseEntity.ok(preview);
 	}
 
 	@PostMapping("/bulk-import")
 	public ResponseEntity<ImportResult> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
-			@RequestBody List<TransactionRequest> requests) {
-		return ResponseEntity.ok(service.importAll(userId, requests.stream().map(r -> withUser(r, userId)).toList()));
+			@RequestBody List<TransactionRequest> requests,
+			@RequestParam(defaultValue = "false") boolean learn) {
+		List<TransactionRequest> rows = requests.stream().map(r -> withUser(r, userId)).toList();
+		ImportResult result = service.importAll(userId, rows);
+		if (learn) {
+			ruleService.learn(userId, rows); // ricorda le categorie scelte per i prossimi import
+		}
+		return ResponseEntity.ok(result);
 	}
 
 	private static TransactionRequest withUser(TransactionRequest r, UUID userId) {

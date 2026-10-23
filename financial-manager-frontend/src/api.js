@@ -225,7 +225,8 @@ export async function parseCsv(file) {
   return await response.json();
 }
 
-export async function bulkImportTransactions(transactions) {
+/** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
+export async function bulkImportTransactions(transactions, learn = false) {
   const userId = getCurrentUserId();
   const payload = transactions.map(t => ({
     ...t,
@@ -234,7 +235,7 @@ export async function bulkImportTransactions(transactions) {
     categoryId: t.categoryId === '' ? null : t.categoryId
   }));
 
-  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import`, {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import?learn=${learn}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -428,5 +429,32 @@ export async function fetchProductHistory(name, unit) {
 /** from/to in formato yyyy-MM-dd */
 export async function fetchFoodSpending(from, to) {
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/spending?from=${from}&to=${to}`);
+  return await response.json();
+}
+
+// ─── Regole di categorizzazione automatica ────────────────────────────────
+
+export async function fetchCategoryRules() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules`);
+  return await response.json();
+}
+
+/** Crea la regola, o ne cambia la categoria se la parola chiave esiste già. */
+export async function saveCategoryRule(keyword, categoryId) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword, categoryId }),
+  });
+  return await response.json();
+}
+
+export async function deleteCategoryRule(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/${id}`, { method: 'DELETE' });
+}
+
+/** Crea regole dalle transazioni già categorizzate; restituisce { created }. */
+export async function learnCategoryRulesFromHistory() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/learn-from-history`, { method: 'POST' });
   return await response.json();
 }
