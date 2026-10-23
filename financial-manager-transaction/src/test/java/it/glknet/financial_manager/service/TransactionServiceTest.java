@@ -1,6 +1,7 @@
 package it.glknet.financial_manager.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -42,6 +43,20 @@ class TransactionServiceTest {
 						.type(TransactionType.USCITA).userId(user).transactionDate(day).build())
 				.toList();
 		when(repo.findByUserIdAndTransactionDateBetween(any(), any(), any())).thenReturn(rows);
+	}
+
+	@Test
+	void incompleteOrNegativeTransactionsAreRejectedWith400() {
+		var ok = coffee("x");
+		for (TransactionRequest bad : List.of(
+				new TransactionRequest("x", null, ok.type(), null, user, day),
+				new TransactionRequest("x", new BigDecimal("-1"), ok.type(), null, user, day),
+				new TransactionRequest("x", ok.amount(), null, null, user, day),
+				new TransactionRequest("x", ok.amount(), ok.type(), null, user, null))) {
+			assertThrows(org.springframework.web.server.ResponseStatusException.class,
+					() -> service.createTransaction(bad));
+		}
+		verify(repo, times(0)).save(any());
 	}
 
 	@Test

@@ -38,6 +38,11 @@ public class TransactionService {
 
 	@Transactional
 	public Transaction createTransaction(TransactionRequest request) {
+		if (request.amount() == null || request.amount().signum() < 0 || request.type() == null
+				|| request.transactionDate() == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Servono importo (non negativo), tipo e data");
+		}
 		// Controllo se esiste la categoria (se fornita)
 		if (request.categoryId() != null) {
 			Category category = categoryRepository.findById(request.categoryId()).orElse(null);

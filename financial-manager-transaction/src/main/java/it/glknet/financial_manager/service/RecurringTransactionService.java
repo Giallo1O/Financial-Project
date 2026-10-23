@@ -103,9 +103,16 @@ public class RecurringTransactionService {
         int validDay = Math.min(day, nextMonth.lengthOfMonth());
         recurring.setNextDueDate(nextMonth.withDayOfMonth(validDay));
         recurring.setLastGeneratedDate(effectiveDate);
+        if (pastEnd(recurring)) {
+            recurring.setActive(false); // l'ultima scadenza e' stata generata: la ricorrenza e' finita
+        }
 
         recurringRepository.save(recurring);
         return createdTx;
+    }
+
+    private static boolean pastEnd(RecurringTransaction r) {
+        return r.getEndDate() != null && r.getNextDueDate() != null && r.getNextDueDate().isAfter(r.getEndDate());
     }
 
     @Transactional
@@ -117,6 +124,11 @@ public class RecurringTransactionService {
 
         List<Transaction> generated = new ArrayList<>();
         for (RecurringTransaction r : dueList) {
+            if (pastEnd(r)) {
+                r.setActive(false);
+                recurringRepository.save(r);
+                continue;
+            }
             try {
                 Transaction tx = generate(r, r.getNextDueDate());
                 generated.add(tx);

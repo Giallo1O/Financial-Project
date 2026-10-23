@@ -61,4 +61,30 @@ class RecurringTransactionServiceTest {
 		assertThrows(ResponseStatusException.class, () -> service.delete(UUID.randomUUID(), r.getId()));
 		verify(transactions, never()).createTransaction(any());
 	}
+
+	@Test
+	void recurrenceIsDeactivatedAfterItsLastDueDate() {
+		RecurringTransaction r = rent(LocalDate.of(2026, 1, 31));
+		r.setActive(true);
+		r.setEndDate(LocalDate.of(2026, 2, 15));
+		when(repo.findById(r.getId())).thenReturn(Optional.of(r));
+		when(transactions.createTransaction(any())).thenReturn(Transaction.builder().build());
+
+		service.confirm(owner, r.getId(), null); // prossima scadenza 28/02 > fine 15/02
+
+		assertEquals(false, r.isActive());
+	}
+
+	@Test
+	void autoConfirmSkipsRecurrenceAlreadyPastItsEndDate() {
+		RecurringTransaction r = rent(LocalDate.of(2026, 3, 31));
+		r.setActive(true);
+		r.setEndDate(LocalDate.of(2026, 2, 15));
+		when(repo.findByActiveTrueAndAutoConfirmTrueAndNextDueDateLessThanEqual(any())).thenReturn(java.util.List.of(r));
+
+		assertEquals(0, service.processDueAutoConfirm(null).size());
+
+		verify(transactions, never()).createTransaction(any());
+		assertEquals(false, r.isActive());
+	}
 }

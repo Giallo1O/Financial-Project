@@ -24,6 +24,10 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        if (request.getUsername() == null || request.getUsername().isBlank() || request.getPassword() == null
+                || request.getPassword().isBlank()) {
+            return ResponseEntity.badRequest().body("Username and password are required");
+        }
         try {
             AuthResponse response = userService.register(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);

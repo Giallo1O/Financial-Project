@@ -49,10 +49,14 @@ public class UserService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        // Generate a new token on each login
-        String token = UUID.randomUUID().toString();
-        user.setToken(token);
-        userRepository.save(user);
+        // Il token si riusa: un nuovo login (es. dal telefono) non deve scollegare le altre sessioni.
+        // ponytail: il token non ruota ne' scade; aggiungere una tabella di sessioni se serve il logout remoto.
+        String token = user.getToken();
+        if (token == null) {
+            token = UUID.randomUUID().toString();
+            user.setToken(token);
+            userRepository.save(user);
+        }
 
         return AuthResponse.builder()
                 .token(token)
