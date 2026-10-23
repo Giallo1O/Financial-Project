@@ -79,6 +79,26 @@ services:
       - transaction-service
       - user-service
 
+  # HTTPS dentro la rete privata Tailscale: https://finmanager.<nome-rete>.ts.net (vedi README, "HTTPS con Tailscale").
+  # Parte solo se lo chiedi: docker compose --profile tailscale up -d
+  # Non usa Funnel: l'app NON e' raggiungibile da internet, solo dai dispositivi della tua rete Tailscale.
+  tailscale:
+    image: tailscale/tailscale:stable
+    profiles: ["tailscale"]
+    container_name: tailscale
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY:-}          # serve solo al primo avvio (poi il login resta nel volume)
+      - TS_HOSTNAME=finmanager              # diventa finmanager.<nome-rete>.ts.net
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json  # inoltra HTTPS (443) al frontend
+      - TS_AUTH_ONCE=true
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - ./tailscale:/config:ro
+    depends_on:
+      - frontend-service
+    restart: unless-stopped
+
   # Backup giornaliero di entrambi i database in ./backups (compressi, ultimi 14 giorni).
   # Attenzione: sta sullo stesso disco del server; copia ogni tanto la cartella su un altro supporto.
   backup:
@@ -117,5 +137,6 @@ services:
       - postgres-users
 
 volumes:
+  tailscale_state:
   pg_trans_data:
   pg_users_data:

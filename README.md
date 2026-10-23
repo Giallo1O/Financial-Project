@@ -117,9 +117,45 @@ Con il telefono sul Wi-Fi di casa apri `http://<IP-del-server>:3000` (compose) o
 | *Installa app* su Android (icona vera, senza barra del browser) | no, solo scorciatoia | sì |
 | Avvio più rapido e apertura anche senza rete (service worker) | no | sì |
 
-Per avere HTTPS solo in casa ci sono tre strade, non incluse nel repository: **Tailscale** (`tailscale serve`, certificati gratuiti, serve l'app Tailscale sui telefoni), un **dominio proprio** con certificato Let's Encrypt che punta all'IP di casa, oppure una **CA locale** (es. Caddy con `tls internal` o mkcert) da installare su ogni telefono.
+Per avere HTTPS solo in casa si usa **Tailscale**: vedi la sezione "HTTPS con Tailscale" qui sotto.
 
 **Cosa non c'è:** condivisione di una foto verso l'app dalla galleria (funzione solo Android), notifiche, uso dei dati senza rete. Il service worker non salva mai dati finanziari: le chiamate `/api` vanno sempre in rete.
+
+## HTTPS con Tailscale
+
+Tailscale crea una rete privata tra i tuoi dispositivi e dà al server un indirizzo `https://finmanager.<nome-rete>.ts.net` con certificato valido: nessuna porta aperta su internet e nessun certificato da installare sui telefoni. L'app si apre solo dai dispositivi collegati a Tailscale, **anche quando sei a casa** (l'app Tailscale sul telefono deve essere attiva). Non si usa Funnel, che invece pubblicherebbe l'app su internet.
+
+**Una volta sola, nell'admin console di Tailscale** (`login.tailscale.com/admin`)
+1. Crea l'account (il piano personale è gratuito; i limiti su utenti e dispositivi cambiano, guarda la pagina dei prezzi).
+2. Sezione *DNS*: attiva *MagicDNS* e poi *Enable HTTPS* (i certificati).
+3. *Settings → Keys → Generate auth key* e copia la chiave in `.env` come `TS_AUTHKEY` (serve solo al primo avvio).
+4. Dopo il primo avvio: *Machines → finmanager → Disable key expiry*. Altrimenti, dopo qualche mese la chiave del dispositivo scade e il server esce dalla rete finché non lo riautentichi.
+
+**Con docker compose**
+```bash
+docker compose --profile tailscale up -d --build
+docker compose logs tailscale          # deve mostrare che è connesso
+docker compose exec tailscale tailscale status
+```
+Il servizio `tailscale` parte solo con `--profile tailscale`, quindi l'avvio normale non cambia. Usa `tailscale/serve.json`, che inoltra HTTPS (443) al frontend. Il nome completo dell'indirizzo è nell'admin console (*Machines*). Dopo il primo avvio puoi togliere `TS_AUTHKEY` da `.env`: l'accesso resta salvato nel volume `tailscale_state`.
+
+**Con Kubernetes (o senza compose):** installa Tailscale sul server (`tailscale up --hostname=finmanager`) e inoltra la porta dell'app:
+```bash
+sudo tailscale serve --bg 30000      # https://finmanager.<nome-rete>.ts.net  ->  http://127.0.0.1:30000
+sudo tailscale serve reset           # per toglierlo
+```
+
+**Sui telefoni:** installa Tailscale (Play Store / App Store), accedi con lo stesso account e attivalo. Poi apri l'indirizzo `https://finmanager.<nome-rete>.ts.net`: su Android Chrome compare *Installa app*, su iPhone si usa Safari → Condividi → *Aggiungi alla schermata Home*.
+
+**Per far usare l'app anche a un'altra persona:** può avere il suo account Tailscale gratuito e ricevere l'accesso in uno di due modi, dalla admin console: *Users → Invite* (entra nella tua rete) oppure *Machines → finmanager → Share* (vede solo il server; accetta il link con il suo account Tailscale). Dentro l'app ognuno si registra con il proprio utente e i dati restano separati.
+
+**Se qualcosa non va**
+- Nei log compare un errore sui certificati o su HTTPS: manca il punto 2.
+- L'indirizzo non si apre dal telefono: l'app Tailscale sul telefono è spenta.
+- Il server non è più raggiungibile dopo mesi: chiave scaduta, punto 4 (rigenera `TS_AUTHKEY` e riavvia il servizio).
+- Il nome include il nome della tua rete (`.ts.net`) e compare nei registri pubblici dei certificati: non contiene dati dell'app, ma non è segreto.
+
+**Dopo che funziona** puoi chiudere sul server le porte che non servono più dalla rete locale, togliendo da `ports:` di `docker-compose.yml` quelle di Postgres, pgAdmin e dei servizi (5432–5434, 5050, 8080, 8082) e, se vuoi, anche `3000`.
 
 ## Backup e ripristino
 
@@ -173,6 +209,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ✅ Categorie automatiche provate con servizi reali (suggerimento, apprendimento, correzione, storico, isolamento tra utenti) e nel browser (import e pagina Categorie).
 - ✅ Doppio conteggio scontrino/banca provato nei due ordini (scontrino poi estratto conto, estratto conto poi scontrino) e nel browser.
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
+- ⚠️ **Tailscale non provato:** nell'ambiente non c'era un account Tailscale né Docker. La configurazione (`tailscale/serve.json`, il servizio nel compose, i comandi) è scritta in base al codice sorgente ufficiale di Tailscale e controllata nella sintassi, ma non è mai stata avviata.
 - ⚠️ **Non provata su telefoni veri** (Android, Safari su iPhone): l'emulazione non riproduce fotocamera, installazione e comportamenti di Safari. Anche la configurazione di nginx (limite di upload, timeout, regole per `sw.js`) non è stata avviata perché nginx non c'era nell'ambiente.
 - ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
