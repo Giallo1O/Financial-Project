@@ -1,0 +1,35 @@
+name: images
+# Ad ogni push su main costruisce le 3 immagini e le pubblica su GHCR; poi si fa "Redeploy" da Portainer.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { name: transaction, dir: financial-manager-transaction, args: "" }
+          - { name: user, dir: financial-manager-user, args: "" }
+          - { name: frontend, dir: financial-manager-frontend, args: "VITE_TRANSACTION_API_URL=/api/transaction\nVITE_USER_API_URL=/api/user" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.dir }}
+          push: true
+          build-args: ${{ matrix.args }}
+          tags: |
+            ghcr.io/giallo1o/finmanager-${{ matrix.name }}:latest
+            ghcr.io/giallo1o/finmanager-${{ matrix.name }}:${{ github.sha }}

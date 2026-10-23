@@ -137,10 +137,12 @@ spec:
       labels:
         app: transaction-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull # facoltativo: serve solo se i pacchetti GHCR sono privati
       containers:
         - name: app
-          image: finmanager/transaction-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/giallo1o/finmanager-transaction:latest
+          imagePullPolicy: Always
           startupProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -203,10 +205,12 @@ spec:
       labels:
         app: user-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull # facoltativo: serve solo se i pacchetti GHCR sono privati
       containers:
         - name: app
-          image: finmanager/user-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/giallo1o/finmanager-user:latest
+          imagePullPolicy: Always
           startupProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -263,10 +267,12 @@ spec:
       labels:
         app: frontend-service
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull # facoltativo: serve solo se i pacchetti GHCR sono privati
       containers:
         - name: frontend
-          image: finmanager/frontend-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/giallo1o/finmanager-frontend:latest
+          imagePullPolicy: Always
           startupProbe:
             httpGet:
               path: /
