@@ -48,6 +48,10 @@ public class Receipt {
 	@Column(name = "transaction_id")
 	private UUID transactionId;
 
+	/** false se lo scontrino e' stato collegato a un movimento gia' esistente (es. importato dalla banca). Null = vecchi dati: la spesa l'ha creata lo scontrino. */
+	@Column(name = "transaction_created")
+	private Boolean transactionCreated;
+
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 

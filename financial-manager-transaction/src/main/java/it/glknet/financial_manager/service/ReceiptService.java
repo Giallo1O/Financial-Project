@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -25,8 +26,10 @@ import it.glknet.financial_manager.dto.ReceiptItemDto;
 import it.glknet.financial_manager.dto.ReceiptRequest;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Receipt;
+import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.model.ReceiptItem;
 import it.glknet.financial_manager.model.TransactionType;
+import it.glknet.financial_manager.repository.CategoryRepository;
 import it.glknet.financial_manager.repository.ReceiptItemRepository;
 import it.glknet.financial_manager.repository.ReceiptRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
@@ -42,6 +45,7 @@ public class ReceiptService {
 	private final ReceiptRepository receipts;
 	private final ReceiptItemRepository items;
 	private final TransactionRepository transactionRepository;
+	private final CategoryRepository categoryRepository;
 	private final TransactionService transactionService;
 
 	/** Salva lo scontrino come spesa (transazione di uscita) piu' le righe prodotto, in un'unica transazione DB. */
@@ -59,10 +63,23 @@ public class ReceiptService {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "Questo scontrino e' gia' stato salvato");
 		}
 
-		var tx = transactionService.createTransaction(new TransactionRequest("Spesa " + store, req.total(),
-				TransactionType.USCITA, req.categoryId(), userId, req.purchaseDate()));
+		Transaction tx;
+		boolean created = req.linkTransactionId() == null;
+		if (created) {
+			tx = transactionService.createTransaction(new TransactionRequest("Spesa " + store, req.total(),
+					TransactionType.USCITA, req.categoryId(), userId, req.purchaseDate()));
+		} else {
+			tx = linkable(userId, req.purchaseDate(), req.total(), req.linkTransactionId());
+			// il movimento resta com'e', salvo la categoria se non ne ha una e quella scelta e' dell'utente
+			if (tx.getCategoryId() == null && req.categoryId() != null && categoryRepository
+					.findById(req.categoryId()).filter(c -> userId.equals(c.getUserId())).isPresent()) {
+				tx.setCategoryId(req.categoryId());
+				transactionRepository.save(tx);
+			}
+		}
 		Receipt receipt = receipts.save(Receipt.builder().userId(userId).storeName(store)
-				.purchaseDate(req.purchaseDate()).total(req.total()).transactionId(tx.getId()).build());
+				.purchaseDate(req.purchaseDate()).total(req.total()).transactionId(tx.getId())
+				.transactionCreated(created).build());
 
 		List<ReceiptItem> saved = new ArrayList<>();
 		for (ReceiptItemDto dto : req.items()) {
@@ -76,6 +93,35 @@ public class ReceiptService {
 					.unitPrice(dto.unitPrice()).totalPrice(dto.totalPrice()).build()));
 		}
 		return new ReceiptDetail(receipt, saved);
+	}
+
+	/**
+	 * Movimenti in uscita gia' presenti (es. importati dalla banca) che potrebbero essere questo scontrino: stesso
+	 * importo, data entro {@value TransactionService#MATCH_DAYS} giorni, non gia' collegati a un altro scontrino.
+	 * I piu' vicini nel tempo per primi.
+	 */
+	public List<Transaction> matchCandidates(UUID userId, LocalDate date, BigDecimal total) {
+		List<Transaction> sameAmount = transactionRepository
+				.findByUserIdAndTransactionDateBetween(userId, date.minusDays(TransactionService.MATCH_DAYS),
+						date.plusDays(TransactionService.MATCH_DAYS))
+				.stream().filter(t -> t.getType() == TransactionType.USCITA && t.getAmount() != null
+						&& t.getAmount().compareTo(total) == 0)
+				.toList();
+		if (sameAmount.isEmpty()) {
+			return sameAmount;
+		}
+		Set<UUID> taken = receipts.findByTransactionIdIn(sameAmount.stream().map(Transaction::getId).toList())
+				.stream().map(Receipt::getTransactionId).collect(Collectors.toSet());
+		return sameAmount.stream().filter(t -> !taken.contains(t.getId()))
+				.sorted(Comparator.comparingLong(
+						t -> Math.abs(java.time.temporal.ChronoUnit.DAYS.between(t.getTransactionDate(), date))))
+				.toList();
+	}
+
+	private Transaction linkable(UUID userId, LocalDate date, BigDecimal total, UUID transactionId) {
+		return matchCandidates(userId, date, total).stream().filter(t -> t.getId().equals(transactionId)).findFirst()
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+						"Il movimento scelto non corrisponde piu' a questo scontrino"));
 	}
 
 	public List<Receipt> list(UUID userId) {
@@ -93,7 +139,7 @@ public class ReceiptService {
 		Receipt r = findOwned(userId, id);
 		items.deleteByReceiptId(id);
 		receipts.delete(r);
-		if (r.getTransactionId() != null) {
+		if (r.getTransactionId() != null && !Boolean.FALSE.equals(r.getTransactionCreated())) {
 			transactionRepository.findById(r.getTransactionId()).filter(t -> userId.equals(t.getUserId()))
 					.ifPresent(transactionRepository::delete);
 		}

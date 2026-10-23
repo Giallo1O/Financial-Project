@@ -70,12 +70,12 @@ public class TransactionController {
 	public ResponseEntity<List<ImportRow>> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam("file") MultipartFile file) {
 		List<TransactionRequest> rows = csvImportService.parseCsv(file);
-		List<Boolean> duplicates = service.markDuplicates(userId, rows);
+		List<String> duplicates = service.findDuplicates(userId, rows);
 		List<ImportRow> preview = new ArrayList<>();
 		for (int i = 0; i < rows.size(); i++) {
 			TransactionRequest r = rows.get(i);
 			preview.add(new ImportRow(r.description(), r.amount(), r.type(), r.categoryId(), r.transactionDate(),
-					duplicates.get(i)));
+					duplicates.get(i) != null, duplicates.get(i)));
 		}
 		return ResponseEntity.ok(preview);
 	}

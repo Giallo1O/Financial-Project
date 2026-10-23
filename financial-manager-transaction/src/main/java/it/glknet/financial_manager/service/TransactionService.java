@@ -18,9 +18,11 @@ import org.springframework.web.server.ResponseStatusException;
 import it.glknet.financial_manager.dto.ImportResult;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Category;
+import it.glknet.financial_manager.model.Receipt;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.model.TransactionType;
 import it.glknet.financial_manager.repository.CategoryRepository;
+import it.glknet.financial_manager.repository.ReceiptRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -31,6 +33,8 @@ public class TransactionService {
 	private final TransactionRepository repository;
 
 	private final CategoryRepository categoryRepository;
+
+	private final ReceiptRepository receiptRepository;
 
 	@Transactional
 	public Transaction createTransaction(TransactionRequest request) {
@@ -57,39 +61,76 @@ public class TransactionService {
 		return repository.findByUserIdAndMonthAndYear(userId, month, year);
 	}
 
+	/** Giorni di scarto tra la data dello scontrino e quella del movimento in banca (valuta/registrazione in ritardo). */
+	public static final int MATCH_DAYS = 3;
+
 	/**
-	 * Per ogni riga dice se esiste gia' un movimento uguale (stessa data, importo, tipo e descrizione).
-	 * Si contano le occorrenze: se nel DB c'e' 1 caffe' identico e nel file 2, solo il primo e' doppione.
+	 * Per ogni riga restituisce null se e' nuova, altrimenti il motivo per cui e' un doppione:
+	 * - esiste gia' un movimento uguale (stessa data, importo, tipo e descrizione). Si contano le occorrenze: se nel DB
+	 *   c'e' 1 caffe' identico e nel file 2, solo il primo e' un doppione;
+	 * - e' un'uscita gia' registrata da uno scontrino (stesso importo, data entro {@value #MATCH_DAYS} giorni), che vince
+	 *   perche' ha il dettaglio dei prodotti. Ogni scontrino copre al massimo una riga.
 	 */
-	public List<Boolean> markDuplicates(UUID userId, List<TransactionRequest> rows) {
+	public List<String> findDuplicates(UUID userId, List<TransactionRequest> rows) {
 		LocalDate min = rows.stream().map(TransactionRequest::transactionDate).filter(Objects::nonNull)
 				.min(Comparator.naturalOrder()).orElse(null);
 		LocalDate max = rows.stream().map(TransactionRequest::transactionDate).filter(Objects::nonNull)
 				.max(Comparator.naturalOrder()).orElse(null);
 		Map<String, Integer> existing = new HashMap<>();
+		List<Receipt> coveringReceipts = new ArrayList<>();
 		if (min != null) {
 			for (Transaction t : repository.findByUserIdAndTransactionDateBetween(userId, min, max)) {
 				existing.merge(key(t.getTransactionDate(), t.getAmount(), t.getType(), t.getDescription()), 1,
 						Integer::sum);
 			}
+			for (Receipt r : receiptRepository.findByUserIdAndPurchaseDateBetween(userId, min.minusDays(MATCH_DAYS),
+					max.plusDays(MATCH_DAYS))) {
+				if (!Boolean.FALSE.equals(r.getTransactionCreated())) {
+					coveringReceipts.add(r);
+				}
+			}
 		}
-		List<Boolean> result = new ArrayList<>();
+		List<String> result = new ArrayList<>();
 		for (TransactionRequest r : rows) {
 			String k = key(r.transactionDate(), r.amount(), r.type(), r.description());
 			int left = existing.getOrDefault(k, 0);
 			existing.put(k, Math.max(0, left - 1));
-			result.add(left > 0);
+			if (left > 0) {
+				result.add("Già presente");
+				continue;
+			}
+			Receipt covering = r.type() == TransactionType.USCITA ? takeCoveringReceipt(coveringReceipts, r) : null;
+			result.add(covering == null ? null : "Già registrato con lo scontrino " + covering.getStoreName() + " del "
+					+ covering.getPurchaseDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
 		}
 		return result;
+	}
+
+	private static Receipt takeCoveringReceipt(List<Receipt> receipts, TransactionRequest row) {
+		if (row.transactionDate() == null || row.amount() == null) {
+			return null;
+		}
+		Receipt best = null;
+		for (Receipt r : receipts) {
+			long gap = Math.abs(java.time.temporal.ChronoUnit.DAYS.between(r.getPurchaseDate(), row.transactionDate()));
+			if (gap <= MATCH_DAYS && r.getTotal().compareTo(row.amount()) == 0 && (best == null || gap < Math
+					.abs(java.time.temporal.ChronoUnit.DAYS.between(best.getPurchaseDate(), row.transactionDate())))) {
+				best = r;
+			}
+		}
+		if (best != null) {
+			receipts.remove(best);
+		}
+		return best;
 	}
 
 	/** Importa le righe non ancora presenti; le altre vengono saltate. */
 	@Transactional
 	public ImportResult importAll(UUID userId, List<TransactionRequest> rows) {
-		List<Boolean> duplicates = markDuplicates(userId, rows);
+		List<String> duplicates = findDuplicates(userId, rows);
 		int imported = 0;
 		for (int i = 0; i < rows.size(); i++) {
-			if (!duplicates.get(i)) {
+			if (duplicates.get(i) == null) {
 				createTransaction(rows.get(i));
 				imported++;
 			}

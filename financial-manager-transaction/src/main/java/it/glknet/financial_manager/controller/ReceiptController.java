@@ -1,5 +1,6 @@
 package it.glknet.financial_manager.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,7 @@ import it.glknet.financial_manager.dto.ReceiptDetail;
 import it.glknet.financial_manager.dto.ReceiptRequest;
 import it.glknet.financial_manager.dto.ScannedReceipt;
 import it.glknet.financial_manager.model.Receipt;
+import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.service.ReceiptScanService;
 import it.glknet.financial_manager.service.ReceiptService;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,14 @@ public class ReceiptController {
 	public ReceiptDetail save(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestBody ReceiptRequest request) {
 		return service.save(userId, request);
+	}
+
+	/** Movimenti gia' presenti che potrebbero essere questo scontrino (stesso importo, data vicina). */
+	@GetMapping("/match")
+	public List<Transaction> match(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+			@RequestParam BigDecimal total) {
+		return service.matchCandidates(userId, date, total);
 	}
 
 	@GetMapping

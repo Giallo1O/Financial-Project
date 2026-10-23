@@ -391,6 +391,14 @@ export async function saveReceipt(receipt) {
   return await response.json();
 }
 
+/** Movimenti gia' presenti (es. importati dalla banca) che potrebbero essere questo scontrino. */
+export async function fetchReceiptMatches(date, total) {
+  const response = await authenticatedFetch(
+    `${TRANSACTION_API}/api/receipts/match?date=${date}&total=${encodeURIComponent(total)}`
+  );
+  return await response.json();
+}
+
 export async function fetchReceipts() {
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts`);
   return await response.json();

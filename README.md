@@ -9,8 +9,8 @@ Applicazione web per gestire le proprie finanze su un **home server**: movimenti
 | **Account** | Registrazione e login (password con hash BCrypt). Ogni utente vede solo i propri dati. |
 | **Dashboard** | Mese corrente: saldo, entrate/uscite, grafici a torta per categoria, ultime transazioni. |
 | **Transazioni** | Inserimento, elenco e cancellazione di entrate/uscite. Esportazione in **Excel** e **PDF**. |
-| **Import CSV** | Wizard in 3 step: carica il CSV, controlla e correggi le righe, conferma. **Salta i movimenti già presenti** (stessa data, importo, tipo e descrizione): puoi ricaricare estratti conto che si sovrappongono senza creare doppioni. Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
-| **Spesa (scontrini)** | Carichi la foto (o il PDF) di uno scontrino: un'AI (Claude) estrae negozio, data, totale e ogni articolo con nome normalizzato, quantità, prezzo e tipo di alimento. Controlli e correggi la bozza, poi salvi: viene creata la **spesa** tra le transazioni e le righe prodotto. Pagine: elenco scontrini, **prodotti e prezzi** (minimo/medio/massimo, dove costa meno, andamento nel tempo), **spesa per tipo di alimento** per mese. |
+| **Import CSV** | Wizard in 3 step: carica il CSV, controlla e correggi le righe, conferma. **Salta i movimenti già presenti** (stessa data, importo, tipo e descrizione) e le **uscite già registrate da uno scontrino** (stesso importo, data entro 3 giorni): puoi ricaricare estratti conto che si sovrappongono e non conti due volte la spesa che hai già salvato con lo scontrino. L'anteprima dice perché una riga verrà saltata. Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
+| **Spesa (scontrini)** | Carichi la foto (o il PDF) di uno scontrino: un'AI (Claude) estrae negozio, data, totale e ogni articolo con nome normalizzato, quantità, prezzo e tipo di alimento. Controlli e correggi la bozza, poi salvi: viene creata la **spesa** tra le transazioni e le righe prodotto. Se hai già importato l'estratto conto, al salvataggio l'app propone di **collegare lo scontrino al movimento in banca** invece di creare una nuova spesa. Pagine: elenco scontrini, **prodotti e prezzi** (minimo/medio/massimo, dove costa meno, andamento nel tempo), **spesa per tipo di alimento** per mese. |
 | **Categorie** | Colore, icona, tipo (entrata/uscita), budget mensile, flag **fissa/variabile** e **tag** (es. `#Parigi2026`). |
 | **Budget** | Per ogni categoria di spesa: budget mensile vs speso, con avviso di sforamento. |
 | **Analisi** | Grafici del mese: barre per categoria e andamento giornaliero. |
@@ -59,7 +59,7 @@ Un database PostgreSQL per servizio. Nessun broker di messaggi.
 
 1. Crea una chiave API su https://console.anthropic.com e mettila in `.env` come `ANTHROPIC_API_KEY` (vedi `.env.example`). Il server deve poter raggiungere `api.anthropic.com`; senza chiave l'app funziona, solo la lettura scontrini è disattivata.
 2. Vai su **Spesa → Nuovo scontrino** e carica una o più foto (fino a 4, per scontrini lunghi) o un PDF. Il browser ridimensiona le foto e applica la rotazione prima dell'invio.
-3. Controlla la bozza: l'app avvisa se la somma delle righe non coincide con il totale. Gli sconti sono righe negative. Salvando si crea la transazione di spesa (categoria a scelta) e lo stesso scontrino non si può salvare due volte.
+3. Controlla la bozza: l'app avvisa se la somma delle righe non coincide con il totale. Gli sconti sono righe negative. Se esiste già un movimento in banca con lo stesso importo e una data vicina (entro 3 giorni), il riquadro "Questo acquisto sembra già nei tuoi movimenti" lo propone: collegandolo non si crea una seconda spesa (la categoria scelta viene applicata solo se il movimento non ne ha una). Altrimenti, salvando si crea la transazione di spesa (categoria a scelta). Lo stesso scontrino non si può salvare due volte. Eliminando uno scontrino collegato, il movimento in banca resta.
 
 Il modello è `claude-opus-5-5` per default (`ANTHROPIC_MODEL` per cambiarlo, es. `claude-sonnet-5-5` o `claude-haiku-5-5` per costare meno: conviene confrontarli su scontrini reali). Il costo per scontrino non è ancora stato misurato su scontrini veri.
 
@@ -143,6 +143,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ✅ **Provato end-to-end** con servizi e Postgres reali (non Docker/Kubernetes): login e isolamento tra due utenti, categorie, import con doppioni, cancellazione categoria, obiettivi e ricorrenze, scontrini (scan → bozza → salvataggio → prezzi → spese per tipo → cancellazione), e la pagina Spesa in un browser (Chromium).
 - ✅ Test unitari (token/CORS, import CSV e doppioni, ricorrenze, obiettivi, JSON delle entità, scontrini); `npm run lint` senza errori (4 warning sulle dipendenze degli hook).
 - ✅ Dump e ripristino di un database verificati.
+- ✅ Doppio conteggio scontrino/banca provato nei due ordini (scontrino poi estratto conto, estratto conto poi scontrino) e nel browser.
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
 - ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
@@ -150,6 +151,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 
 - **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il precedente (un dispositivo alla volta); `user-service` viene interrogato a ogni richiesta (nessuna cache).
 - **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica gestisce solo "ogni mese al giorno X".
+- **Abbinamento scontrino/banca:** richiede lo stesso importo esatto e una data entro 3 giorni; se la banca registra un importo diverso (mancia, arrotondamento, pagamento diviso) non abbina e va collegato o corretto a mano. Ogni scontrino copre al massimo un movimento.
 - **Import:** se due acquisti identici nello stesso giorno sono davvero distinti ma già uno è presente, il secondo viene saltato (cambia la descrizione per importarlo). Il flag "già presente" dell'anteprima non si aggiorna se modifichi una riga; il controllo definitivo avviene al salvataggio.
 - **Scontrini:** le foto non vengono conservate (solo i dati estratti); formato HEIC non supportato dal server (il browser di solito lo converte); il costo per scontrino va misurato.
 - **Kubernetes:** nessun Ingress/TLS (non serve sulla rete di casa); `ddl-auto=update` al posto di migrazioni (Flyway/Liquibase); stessa password per i due database.

@@ -124,9 +124,9 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      // tempId e duplicate servono solo alla UI: non vanno inviati al backend
+      // tempId, duplicate e duplicateNote servono solo alla UI: non vanno inviati al backend
       // eslint-disable-next-line no-unused-vars
-      const payload = transactions.map(({ tempId, duplicate, transactionDate, ...rest }) => ({
+      const payload = transactions.map(({ tempId, duplicate, duplicateNote, transactionDate, ...rest }) => ({
         ...rest,
         transactionDate: format(transactionDate, 'yyyy-MM-dd'),
         type: rest.type.toUpperCase()
@@ -272,8 +272,8 @@ const ImportTransactions = () => {
                     <tr key={t.tempId} style={t.duplicate ? { opacity: 0.55 } : undefined}>
                       <td>
                         {t.duplicate && (
-                          <span title="Esiste già un movimento uguale: verrà saltato" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
-                            Già presente
+                          <span title="Verrà saltato al salvataggio" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
+                            {t.duplicateNote || 'Già presente'}
                           </span>
                         )}
                         <input 

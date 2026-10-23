@@ -9,7 +9,7 @@ import PrivacyMask from '../components/PrivacyMask';
 import { prepareReceiptFile } from '../utils/imageUtils';
 import {
   fetchCategories, scanReceipt, saveReceipt, fetchReceipts, fetchReceipt, deleteReceipt,
-  fetchProducts, fetchProductHistory, fetchFoodSpending
+  fetchProducts, fetchProductHistory, fetchFoodSpending, fetchReceiptMatches
 } from '../api';
 
 const FOOD_CATEGORIES = [
@@ -90,6 +90,23 @@ const ScanTab = ({ setMessage, onSaved }) => {
   const [draft, setDraft] = useState(null);
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState('');
+  const [matches, setMatches] = useState([]); // movimenti già presenti che potrebbero essere questo scontrino
+  const [linkId, setLinkId] = useState('');   // '' = crea una nuova spesa
+
+  const draftDate = draft?.purchaseDate;
+  const draftTotal = draft?.total;
+  useEffect(() => {
+    if (!draftDate || num(draftTotal) <= 0) {
+      setMatches([]);
+      setLinkId('');
+      return undefined;
+    }
+    let cancelled = false;
+    fetchReceiptMatches(draftDate, num(draftTotal))
+      .then((found) => { if (!cancelled) { setMatches(found); setLinkId(found[0]?.id || ''); } })
+      .catch(() => { if (!cancelled) { setMatches([]); setLinkId(''); } });
+    return () => { cancelled = true; };
+  }, [draftDate, draftTotal]);
 
   useEffect(() => {
     fetchCategories().then((cats) => {
@@ -144,6 +161,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
         purchaseDate: draft.purchaseDate,
         total: num(draft.total),
         categoryId: categoryId || null,
+        linkTransactionId: linkId || null,
         items: draft.items.filter(i => i.name.trim()).map(({ key, ...i }) => ({ // eslint-disable-line no-unused-vars
           ...i,
           quantity: num(i.quantity) || 1,
@@ -151,7 +169,12 @@ const ScanTab = ({ setMessage, onSaved }) => {
           totalPrice: num(i.totalPrice),
         })),
       });
-      setMessage({ text: 'Scontrino salvato: la spesa è stata aggiunta alle transazioni.', type: 'success' });
+      setMessage({
+        text: linkId
+          ? 'Scontrino salvato e collegato al movimento esistente: la spesa non è stata contata due volte.'
+          : 'Scontrino salvato: la spesa è stata aggiunta alle transazioni.',
+        type: 'success'
+      });
       setDraft(null);
       setFiles([]);
       onSaved();
@@ -185,6 +208,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
 
   const cell = { padding: '0.35rem' };
   const compact = { padding: '0.55rem 0.6rem', minWidth: 0 };
+  const radio = { width: 'auto', flex: '0 0 auto', margin: 0, padding: 0 }; // gli input hanno uno stile globale a tutta larghezza
   return (
     <div className="glass-panel" style={{ padding: '2rem' }}>
       <h3 style={{ marginTop: 0 }}>Controlla i dati letti</h3>
@@ -208,13 +232,32 @@ const ScanTab = ({ setMessage, onSaved }) => {
           <input type="number" step="0.01" className="form-input" value={draft.total}
             onChange={(e) => setDraft({ ...draft, total: e.target.value })} />
         </label>
-        <label>Categoria della spesa
+        <label>{linkId ? 'Categoria (se il movimento non ne ha una)' : 'Categoria della spesa'}
           <select className="form-select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">— Nessuna —</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
       </div>
+
+      {matches.length > 0 && (
+        <div className="glass-panel" style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--accent-primary)' }}>
+          <strong>Questo acquisto sembra già nei tuoi movimenti</strong>
+          <p className="text-muted text-sm" style={{ margin: '0.3rem 0 0.75rem' }}>
+            Per non contarlo due volte puoi collegare lo scontrino al movimento esistente invece di creare una nuova spesa.
+          </p>
+          {matches.map(m => (
+            <label key={m.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.4rem', cursor: 'pointer' }}>
+              <input type="radio" name="link" style={radio} checked={linkId === m.id} onChange={() => setLinkId(m.id)} />
+              <span>Collega a: {m.description} · <PrivacyMask>{eur(m.amount)}</PrivacyMask> · {day(m.transactionDate)}</span>
+            </label>
+          ))}
+          <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', cursor: 'pointer' }}>
+            <input type="radio" name="link" style={radio} checked={linkId === ''} onChange={() => setLinkId('')} />
+            <span>Crea una nuova spesa (è un altro acquisto)</span>
+          </label>
+        </div>
+      )}
 
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
@@ -299,7 +342,10 @@ const ReceiptsTab = ({ setMessage }) => {
   };
 
   const remove = async (r) => {
-    if (!window.confirm(`Eliminare lo scontrino ${r.storeName} del ${day(r.purchaseDate)}? Verrà eliminata anche la spesa collegata.`)) return;
+    const note = r.transactionCreated === false
+      ? 'Il movimento in banca collegato resterà.'
+      : 'Verrà eliminata anche la spesa collegata.';
+    if (!window.confirm(`Eliminare lo scontrino ${r.storeName} del ${day(r.purchaseDate)}? ${note}`)) return;
     await deleteReceipt(r.id);
     load();
   };
@@ -314,7 +360,10 @@ const ReceiptsTab = ({ setMessage }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
             <button onClick={() => toggle(r.id)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex', gap: '0.75rem', alignItems: 'center', textAlign: 'left' }}>
               {open[r.id] ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              <span><strong>{r.storeName}</strong> <span className="text-muted">· {day(r.purchaseDate)}</span></span>
+              <span>
+                <strong>{r.storeName}</strong> <span className="text-muted">· {day(r.purchaseDate)}</span>
+                {r.transactionCreated === false && <span className="text-muted text-sm"> · collegato al movimento in banca</span>}
+              </span>
             </button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <strong><PrivacyMask>{eur(r.total)}</PrivacyMask></strong>
