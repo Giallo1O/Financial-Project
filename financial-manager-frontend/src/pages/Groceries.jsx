@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  ShoppingCart, ScanLine, Receipt, Tags, PieChart, Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp
+  ShoppingCart, ScanLine, Receipt, Tags, PieChart, Trash2, Plus, AlertTriangle, ChevronDown, ChevronUp, Camera, Image as ImageIcon,
+  FileText, X
 } from 'lucide-react';
+import './Groceries.css';
 import PrivacyMask from '../components/PrivacyMask';
 import { prepareReceiptFile } from '../utils/imageUtils';
 import {
@@ -20,6 +22,8 @@ const FOOD_CATEGORIES = [
 const eur = (n) => Number(n || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const day = (iso) => new Date(iso).toLocaleDateString('it-IT');
 const num = (v) => (v === '' || v == null ? 0 : Number(String(v).replace(',', '.')) || 0);
+
+const MAX_FILES = 4;
 
 const TABS = [
   { id: 'scan', label: 'Nuovo scontrino', icon: ScanLine },
@@ -84,7 +88,9 @@ const Groceries = () => {
 // ─── Nuovo scontrino: carica → controlla → salva ───────────────────────────
 
 const ScanTab = ({ setMessage, onSaved }) => {
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState([]); // { id, file, url }: url e' l'anteprima (solo immagini)
+  const cameraRef = useRef(null);
+  const galleryRef = useRef(null);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(null);
@@ -117,11 +123,23 @@ const ScanTab = ({ setMessage, onSaved }) => {
     }).catch(() => { });
   }, []);
 
+  const addFiles = (list) => {
+    const added = Array.from(list || []).slice(0, MAX_FILES - files.length).map(file => ({
+      id: crypto.randomUUID(), file, url: file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+    }));
+    setFiles([...files, ...added]);
+  };
+
+  const dropFiles = (kept) => {
+    files.filter(f => !kept.includes(f) && f.url).forEach(f => URL.revokeObjectURL(f.url));
+    setFiles(kept);
+  };
+
   const handleScan = async () => {
     setScanning(true);
     setMessage(null);
     try {
-      const prepared = await Promise.all(files.map(prepareReceiptFile));
+      const prepared = await Promise.all(files.map(f => prepareReceiptFile(f.file)));
       const result = await scanReceipt(prepared);
       setDraft({
         storeName: result.storeName || '',
@@ -176,7 +194,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
         type: 'success'
       });
       setDraft(null);
-      setFiles([]);
+      dropFiles([]);
       onSaved();
     } catch (err) {
       setMessage({ text: err.message || 'Salvataggio non riuscito', type: 'error' });
@@ -187,20 +205,49 @@ const ScanTab = ({ setMessage, onSaved }) => {
 
   if (!draft) {
     return (
-      <div className="glass-panel" style={{ padding: '2rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <h3 style={{ marginTop: 0 }}>Carica lo scontrino</h3>
         <p className="text-muted text-sm">
-          Foto (JPG, PNG, WebP) o PDF. Se lo scontrino è lungo puoi caricare fino a 4 foto, in ordine dall'alto in basso.
-          La lettura richiede qualche secondo e poi potrai controllare e correggere tutto prima di salvare.
+          Appoggia lo scontrino su una superficie piana, con buona luce e il testo ben leggibile. Se è lungo, scatta più
+          foto dall'alto verso il basso (fino a {MAX_FILES}). Dopo la lettura potrai controllare e correggere tutto prima di salvare.
         </p>
-        <input type="file" multiple accept="image/*,application/pdf" className="form-input"
-          onChange={(e) => setFiles(Array.from(e.target.files).slice(0, 4))} />
+
+        {/* "capture" apre direttamente la fotocamera sul telefono; sul computer apre la scelta file */}
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+        <input ref={galleryRef} type="file" multiple accept="image/*,application/pdf" style={{ display: 'none' }}
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+
+        <div className="scan-actions">
+          <button type="button" className="btn btn-primary scan-camera" disabled={files.length >= MAX_FILES}
+            onClick={() => cameraRef.current.click()}>
+            <Camera size={22} /> {files.length ? 'Aggiungi un\'altra foto' : 'Scatta una foto'}
+          </button>
+          <button type="button" className="btn btn-glass" disabled={files.length >= MAX_FILES}
+            onClick={() => galleryRef.current.click()}>
+            <ImageIcon size={20} /> Galleria o PDF
+          </button>
+        </div>
+
         {files.length > 0 && (
-          <p className="text-sm text-muted">{files.map(f => f.name).join(', ')}</p>
+          <div className="scan-thumbs">
+            {files.map((f, idx) => (
+              <div key={f.id} className="scan-thumb">
+                {f.url ? <img src={f.url} alt={`Foto ${idx + 1}`} /> : (
+                  <div className="scan-thumb-doc"><FileText size={28} /><span>{f.file.name}</span></div>
+                )}
+                <span className="scan-thumb-n">{idx + 1}</span>
+                <button type="button" aria-label={`Rimuovi la foto ${idx + 1}`} className="scan-thumb-x"
+                  onClick={() => dropFiles(files.filter(x => x !== f))}>
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
-        <button className="btn btn-primary" style={{ marginTop: '1rem' }}
-          disabled={files.length === 0 || scanning} onClick={handleScan}>
-          <ScanLine size={18} /> {scanning ? 'Lettura in corso…' : 'Leggi scontrino'}
+
+        <button className="btn btn-primary scan-go" disabled={files.length === 0 || scanning} onClick={handleScan}>
+          <ScanLine size={20} /> {scanning ? 'Lettura in corso…' : 'Leggi scontrino'}
         </button>
       </div>
     );
@@ -219,7 +266,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <label>Negozio
           <input className="form-input" value={draft.storeName}
             onChange={(e) => setDraft({ ...draft, storeName: e.target.value })} />
@@ -260,7 +307,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
       )}
 
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+        <table className="receipt-items" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
           <thead>
             <tr style={{ textAlign: 'left' }}>
               <th>Prodotto</th><th>Tipo</th><th style={{ width: '95px' }}>Qtà</th>
@@ -271,27 +318,27 @@ const ScanTab = ({ setMessage, onSaved }) => {
           <tbody>
             {draft.items.map(i => (
               <tr key={i.key} title={i.rawName ? `Sullo scontrino: ${i.rawName}` : ''}>
-                <td style={cell}><input className="form-input" style={compact} value={i.name}
+                <td className="cell-name" data-label="Prodotto" style={cell}><input className="form-input" style={compact} value={i.name}
                   onChange={(e) => setItem(i.key, 'name', e.target.value)} /></td>
-                <td style={cell}>
+                <td className="cell-type" data-label="Tipo" style={cell}>
                   <select className="form-select" style={compact} value={i.foodCategory || 'Altro'}
                     onChange={(e) => setItem(i.key, 'foodCategory', e.target.value)}>
                     {FOOD_CATEGORIES.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </td>
-                <td style={cell}><input type="number" step="0.001" className="form-input" style={compact} value={i.quantity ?? ''}
+                <td data-label="Quantità" style={cell}><input type="number" step="0.001" className="form-input" style={compact} value={i.quantity ?? ''}
                   onChange={(e) => setItem(i.key, 'quantity', e.target.value)} /></td>
-                <td style={cell}>
+                <td data-label="Unità" style={cell}>
                   <select className="form-select" style={compact} value={i.unit || 'pz'}
                     onChange={(e) => setItem(i.key, 'unit', e.target.value)}>
                     <option>pz</option><option>kg</option><option>l</option>
                   </select>
                 </td>
-                <td style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.unitPrice ?? ''}
+                <td data-label="Prezzo unit." style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.unitPrice ?? ''}
                   onChange={(e) => setItem(i.key, 'unitPrice', e.target.value)} /></td>
-                <td style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.totalPrice ?? ''}
+                <td data-label="Importo" style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.totalPrice ?? ''}
                   onChange={(e) => setItem(i.key, 'totalPrice', e.target.value)} /></td>
-                <td style={cell}>
+                <td className="cell-del" style={cell}>
                   <button className="btn-icon" aria-label="Rimuovi riga" onClick={() => removeItem(i.key)}
                     style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
                     <Trash2 size={18} />
@@ -418,10 +465,10 @@ const ProductsTab = () => {
       <input className="form-input" placeholder="Cerca un prodotto…" value={search}
         onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: '1rem', maxWidth: '360px' }} />
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
+        <table className="products-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
           <thead>
             <tr style={{ textAlign: 'left' }}>
-              <th>Prodotto</th><th>Acquisti</th><th>Ultimo</th><th>Minimo</th><th>Medio</th><th>Massimo</th><th>Più conveniente</th>
+              <th>Prodotto</th><th className="col-extra">Acquisti</th><th>Ultimo</th><th>Minimo</th><th className="col-extra">Medio</th><th className="col-extra">Massimo</th><th>Più conveniente</th>
             </tr>
           </thead>
           <tbody>
@@ -429,11 +476,11 @@ const ProductsTab = () => {
               <tr key={`${p.name}|${p.unit}`} onClick={() => select(p)}
                 style={{ cursor: 'pointer', background: selected?.name === p.name && selected?.unit === p.unit ? 'rgba(255,255,255,0.06)' : undefined }}>
                 <td style={{ padding: '0.45rem 0' }}>{p.name} <span className="text-muted text-sm">/{p.unit}</span></td>
-                <td>{p.purchases}</td>
+                <td className="col-extra">{p.purchases}</td>
                 <td><PrivacyMask>{eur(p.lastUnitPrice)}</PrivacyMask></td>
                 <td><PrivacyMask>{eur(p.minUnitPrice)}</PrivacyMask></td>
-                <td><PrivacyMask>{eur(p.avgUnitPrice)}</PrivacyMask></td>
-                <td><PrivacyMask>{eur(p.maxUnitPrice)}</PrivacyMask></td>
+                <td className="col-extra"><PrivacyMask>{eur(p.avgUnitPrice)}</PrivacyMask></td>
+                <td className="col-extra"><PrivacyMask>{eur(p.maxUnitPrice)}</PrivacyMask></td>
                 <td>{p.cheapestStore}</td>
               </tr>
             ))}

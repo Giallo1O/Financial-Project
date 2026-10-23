@@ -209,7 +209,7 @@ const RecurringTransactions = () => {
       </header>
 
       {/* Overview Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Uscite Fisse Mensili</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--danger)', fontSize: '2rem' }}>

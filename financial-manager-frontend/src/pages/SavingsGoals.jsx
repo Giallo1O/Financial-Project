@@ -168,7 +168,7 @@ const SavingsGoals = () => {
       </header>
 
       {/* Overview Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Totale Risparmiato</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--success)', fontSize: '2rem' }}>
@@ -211,7 +211,7 @@ const SavingsGoals = () => {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: '1.5rem' }}>
           {goals.map((goal) => {
             const current = Number(goal.currentAmount || 0);
             const target = Number(goal.targetAmount || 0);

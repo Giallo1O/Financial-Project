@@ -68,10 +68,10 @@ services:
     build:
       context: ./financial-manager-frontend
       args:
-        # Since the browser accesses the backend directly from the host machine,
-        # we configure frontend to point to the exposed localhost ports.
-        - VITE_TRANSACTION_API_URL=http://localhost:8080
-        - VITE_USER_API_URL=http://localhost:8082
+        # Percorsi relativi: il browser chiama lo stesso indirizzo da cui ha aperto l'app e nginx (nel container del
+        # frontend) inoltra ai servizi. Cosi' funziona anche dal telefono, dove "localhost" sarebbe il telefono stesso.
+        - VITE_TRANSACTION_API_URL=/api/transaction
+        - VITE_USER_API_URL=/api/user
     container_name: frontend-react-app
     ports:
       - "3000:80"

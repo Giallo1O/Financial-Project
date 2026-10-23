@@ -19,6 +19,7 @@ Applicazione web per gestire le proprie finanze su un **home server**: movimenti
 | **Ricorrenti & Scadenze** | Spese/entrate periodiche con **calendario delle scadenze**; conferma manuale o automatica (job alle 01:00). Solo cadenza mensile. |
 | **Obiettivi di risparmio** | "Salvadanai" con importo target, data, versamenti e prelievi, barra di avanzamento. |
 | **Privacy mode** | Pulsante "occhio" che sfoca tutte le cifre. |
+| **App per il telefono** | Si installa su Android e iPhone (PWA) e si usa a schermo intero. Barra di navigazione in basso con il pulsante **fotocamera** al centro per scattare lo scontrino; layout adattato agli schermi piccoli. Vedi "Usare l'app dal telefono". |
 | **Backup** | Dump giornaliero compresso di entrambi i database (ultimi 14 giorni). |
 
 ## Architettura
@@ -97,6 +98,29 @@ cd financial-manager-frontend && npm ci && npm run dev
 
 Porte dei DB in locale: transactions `5432`, users `5434`. Il servizio `user` ha dei default per il suo database. Se Docker non è disponibile, `SPRING_DOCKER_COMPOSE_ENABLED=false` disattiva l'avvio automatico del compose da parte di Spring.
 
+## Usare l'app dal telefono
+
+Con il telefono sul Wi-Fi di casa apri `http://<IP-del-server>:3000` (compose) oppure `:30000` (Kubernetes). Conviene dare un IP fisso al server (o un nome nel router), così l'indirizzo non cambia.
+
+**Installarla**
+- **Android (Chrome):** menu ⋮ → *Installa app* (se compare solo *Aggiungi a schermata Home* è una scorciatoia: vedi la tabella sotto).
+- **iPhone/iPad (Safari):** pulsante Condividi → *Aggiungi alla schermata Home*. Deve essere Safari.
+
+**Scattare uno scontrino:** pulsante fotocamera al centro della barra in basso → *Scatta una foto* apre la fotocamera. Per uno scontrino lungo premi *Aggiungi un'altra foto* (fino a 4, dall'alto in basso); *Galleria o PDF* usa file già presenti. Prima dell'invio il telefono ruota e riduce la foto (le foto HEIC dell'iPhone diventano JPEG). Poi controlli le righe, una scheda per articolo, e salvi.
+
+**HTTPS (facoltativo):** su `http://` semplice funziona tutto tranne ciò che i telefoni riservano alle pagine sicure.
+
+| | `http://IP:3000` | con HTTPS |
+|---|---|---|
+| Scatto con la fotocamera | sì | sì |
+| *Aggiungi alla schermata Home* su iPhone, a schermo intero | sì | sì |
+| *Installa app* su Android (icona vera, senza barra del browser) | no, solo scorciatoia | sì |
+| Avvio più rapido e apertura anche senza rete (service worker) | no | sì |
+
+Per avere HTTPS solo in casa ci sono tre strade, non incluse nel repository: **Tailscale** (`tailscale serve`, certificati gratuiti, serve l'app Tailscale sui telefoni), un **dominio proprio** con certificato Let's Encrypt che punta all'IP di casa, oppure una **CA locale** (es. Caddy con `tls internal` o mkcert) da installare su ogni telefono.
+
+**Cosa non c'è:** condivisione di una foto verso l'app dalla galleria (funzione solo Android), notifiche, uso dei dati senza rete. Il service worker non salva mai dati finanziari: le chiamate `/api` vanno sempre in rete.
+
 ## Backup e ripristino
 
 Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
@@ -145,9 +169,11 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ✅ **Provato end-to-end** con servizi e Postgres reali (non Docker/Kubernetes): login e isolamento tra due utenti, categorie, import con doppioni, cancellazione categoria, obiettivi e ricorrenze, scontrini (scan → bozza → salvataggio → prezzi → spese per tipo → cancellazione), e la pagina Spesa in un browser (Chromium).
 - ✅ Test unitari (token/CORS, import CSV e doppioni, ricorrenze, obiettivi, JSON delle entità, scontrini); `npm run lint` senza errori (4 warning sulle dipendenze degli hook).
 - ✅ Dump e ripristino di un database verificati.
+- ✅ App per il telefono provata in Chromium emulando un iPhone: navigazione in basso e menu *Altro*, nessuna pagina che scorre in orizzontale, scatto con due foto (una "di lato" con rotazione EXIF, che arriva dritta all'AI), anteprime e righe a schede, manifest senza errori, service worker attivo e avvio senza rete.
 - ✅ Categorie automatiche provate con servizi reali (suggerimento, apprendimento, correzione, storico, isolamento tra utenti) e nel browser (import e pagina Categorie).
 - ✅ Doppio conteggio scontrino/banca provato nei due ordini (scontrino poi estratto conto, estratto conto poi scontrino) e nel browser.
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
+- ⚠️ **Non provata su telefoni veri** (Android, Safari su iPhone): l'emulazione non riproduce fotocamera, installazione e comportamenti di Safari. Anche la configurazione di nginx (limite di upload, timeout, regole per `sw.js`) non è stata avviata perché nginx non c'era nell'ambiente.
 - ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
 ### Limiti noti e cose aperte

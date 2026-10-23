@@ -127,7 +127,7 @@ const Budgets = () => {
       </header>
 
       {/* Overview Card */}
-      <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+      <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '2rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <span className="text-muted text-sm" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>Budget Totale</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
@@ -165,7 +165,7 @@ const Budgets = () => {
           <p className="text-muted">Aggiungi dei budget alle tue categorie nella pagina <a href="/categories" style={{ color: 'var(--accent-secondary)', fontWeight: 600 }}>Categorie</a> per vederli qui.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '1.5rem' }}>
           {budgetStats.items.map((item) => (
             <div key={item.id} className="glass-panel" style={{ 
               padding: '1.5rem', 

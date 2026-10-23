@@ -109,7 +109,7 @@ const Analytics = () => {
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '2rem', alignItems: 'start' }}>
+      <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: '250px 1fr', gap: '2rem', alignItems: 'start' }}>
         
         {/* Sidebar Filters */}
         <aside className="glass-panel" style={{ padding: '1.5rem', position: 'sticky', top: '2rem' }}>
