@@ -11,6 +11,7 @@ Applicazione web per gestire le proprie finanze su un **home server**: movimenti
 | **Transazioni** | Inserimento, elenco e cancellazione di entrate/uscite. Esportazione in **Excel** e **PDF**. |
 | **Import CSV** | Wizard in 3 step: carica il CSV, controlla e correggi le righe, conferma. **Salta i movimenti già presenti** (stessa data, importo, tipo e descrizione) e le **uscite già registrate da uno scontrino** (stesso importo, data entro 3 giorni): puoi ricaricare estratti conto che si sovrappongono e non conti due volte la spesa che hai già salvato con lo scontrino. L'anteprima dice perché una riga verrà saltata. **Propone la categoria da solo** con le regole automatiche (vedi sotto). Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
 | **Spesa (scontrini)** | Carichi la foto (o il PDF) di uno scontrino: un'AI (Claude) estrae negozio, data, totale e ogni articolo con nome normalizzato, quantità, prezzo e tipo di alimento. Controlli e correggi la bozza, poi salvi: viene creata la **spesa** tra le transazioni e le righe prodotto. Se hai già importato l'estratto conto, al salvataggio l'app propone di **collegare lo scontrino al movimento in banca** invece di creare una nuova spesa. Pagine: elenco scontrini, **prodotti e prezzi** (minimo/medio/massimo, dove costa meno, andamento nel tempo), **spesa per tipo di alimento** per mese. |
+| **Lista della spesa** | Liste da spuntare in negozio (voci grandi, pensate per il pollice), con quantità e unità. **Suggerimenti dagli scontrini**: "Da ricomprare" (prodotti che compri di solito e che dovresti aver finito, in base a ogni quanti giorni li compri) e "Di solito compri"; basta un tocco per aggiungerli. Per ogni voce con un prezzo noto mostra l'ultimo prezzo e **dove costa meno**, e in fondo la **stima della spesa** e quanto risparmieresti comprando ogni cosa nel negozio più economico. **Condivisibile**: il proprietario crea un codice, l'altra persona lo inserisce in "Unisciti con codice" e vedete la stessa lista; le spunte e le aggiunte compaiono sull'altro telefono in pochi secondi. |
 | **Categorie** | Colore, icona, tipo (entrata/uscita), budget mensile, flag **fissa/variabile** e **tag** (es. `#Parigi2026`). |
 | **Categorie automatiche** | Regole "parola chiave → categoria" (es. `esselunga` → Spesa) applicate all'anteprima dell'import: la categoria compare già scelta, con l'indicazione della regola. Si **imparano da sole**: quando importi e scegli una categoria per una riga, con la casella "Ricorda le categorie scelte" (attiva di default) l'app crea la regola con il nome dell'esercente; se correggi una categoria suggerita, la regola viene corretta. Il pulsante "Crea dalle mie transazioni" ricava le regole dallo storico già categorizzato (parole che compaiono almeno 2 volte con la stessa categoria nell'80% dei casi). Le regole si vedono, si aggiungono e si eliminano nella pagina Categorie. Vince la regola più specifica (`amazon prime` batte `amazon`); una regola vale solo per categorie del tipo giusto (uscita/entrata); le parole contano intere (`bar` non trova `barilla`). |
 | **Budget** | Per ogni categoria di spesa: budget mensile vs speso, con avviso di sforamento. |
@@ -49,6 +50,7 @@ Un database PostgreSQL per servizio. Nessun broker di messaggi.
   - `/api/transactions` (CRUD, filtro `month`/`year`, `parse-csv` con anteprima doppioni, `bulk-import`)
   - `/api/categories`, `/api/recurring-transactions`, `/api/savings-goals`
   - `/api/category-rules` (elenco, crea/aggiorna, elimina, `learn-from-history`)
+  - `/api/shopping-lists` (liste, voci, codice di invito, `join`, `suggestions`)
   - `/api/receipts` (`scan`, salvataggio, elenco, dettaglio, cancellazione, `products`, `products/history`, `spending`)
 - **`financial-manager-frontend`** (React 19 + Vite) — SPA servita da Nginx, che in Kubernetes fa anche da reverse proxy (`/api/transaction`, `/api/user`).
 
@@ -165,6 +167,15 @@ sudo tailscale serve reset           # per toglierlo
 
 **Dopo che funziona** puoi chiudere sul server le porte che non servono più dalla rete locale, togliendo da `ports:` di `docker-compose.yml` quelle di Postgres, pgAdmin e dei servizi (5432–5434, 5050, 8080, 8082) e, se vuoi, anche `3000`.
 
+## Lista della spesa
+
+Nella barra in basso del telefono c'è **Lista** (il Budget è passato in *Altro*); sul computer è nel menu laterale.
+
+- **Primo uso:** si crea da sola una lista "Spesa". Scrivi un prodotto e premi *Aggiungi*, oppure tocca un suggerimento. Toccando il cerchio accanto a una voce la segni come presa (finisce sotto "Presi"); *Svuota presi* la toglie.
+- **Prezzi e suggerimenti vengono dai tuoi scontrini.** Per avere il prezzo su una voce, il nome deve coincidere con quello letto dagli scontrini (maiuscole e accenti non contano): scrivendo compaiono i nomi che conosci. I prezzi di ognuno sono i suoi: gli scontrini non si condividono, la lista sì.
+- **Condividere:** *Condivisione → Crea un codice di invito* (solo il proprietario) e dai il codice all'altra persona, che lo inserisce in *Unisciti con codice* (deve avere un account FinManager). Il codice resta valido finché non lo disattivi; chi è già dentro resta. Chi partecipa può aggiungere, spuntare e togliere voci e può uscire dalla lista; solo il proprietario può eliminarla.
+- La lista si aggiorna da sola ogni 8 secondi mentre la pagina è aperta.
+
 ## Backup e ripristino
 
 Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
@@ -215,6 +226,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ✅ Dump e ripristino di un database verificati.
 - ✅ App per il telefono provata in Chromium emulando un iPhone: navigazione in basso e menu *Altro*, nessuna pagina che scorre in orizzontale, scatto con due foto (una "di lato" con rotazione EXIF, che arriva dritta all'AI), anteprime e righe a schede, manifest senza errori, service worker attivo e avvio senza rete.
 - ✅ Categorie automatiche provate con servizi reali (suggerimento, apprendimento, correzione, storico, isolamento tra utenti) e nel browser (import e pagina Categorie).
+- ✅ Lista della spesa provata con servizi reali e due utenti (creazione, aggiunta con prezzi, suggerimenti "da ricomprare", condivisione con codice, spunte, uscita ed eliminazione, accessi negati agli estranei) e in due telefoni emulati (la spunta di uno compare sull'altro in circa 4 secondi).
 - ✅ Doppio conteggio scontrino/banca provato nei due ordini (scontrino poi estratto conto, estratto conto poi scontrino) e nel browser.
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
 - ⚠️ **Tailscale non provato:** nell'ambiente non c'era un account Tailscale né Docker. La configurazione (`tailscale/serve.json`, il servizio nel compose, i comandi) è scritta in base al codice sorgente ufficiale di Tailscale e controllata nella sintassi, ma non è mai stata avviata.
@@ -226,6 +238,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il precedente (un dispositivo alla volta); `user-service` viene interrogato a ogni richiesta (nessuna cache).
 - **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica gestisce solo "ogni mese al giorno X".
 - **Categorie automatiche:** la parola chiave imparata è la prima parola significativa della descrizione (tolte quelle generiche come pagamento, pos, carta, paypal); se è troppo generica (es. `amazon` per spese diverse) correggi la regola o aggiungine una più specifica nella pagina Categorie. Le regole valgono solo nell'import da CSV, non nell'inserimento manuale né negli scontrini. Se importi una riga con una categoria sbagliata e la casella è attiva, la regola impara lo sbaglio: si corregge o si elimina dalla pagina Categorie.
+- **Lista della spesa:** "da ricomprare" è una stima (servono almeno due giorni di acquisto per calcolare ogni quanto compri un prodotto; si segnala quando è passato l'80% di quel tempo). Il prezzo di una voce compare solo se nome e unità coincidono con un prodotto degli scontrini di chi guarda. Il proprietario non può togliere una persona già entrata (disattivare il codice impedisce solo nuovi ingressi). Gli aggiornamenti arrivano a intervalli di 8 secondi, non in tempo reale. Dopo uno scontrino le voci non si spuntano da sole.
 - **Abbinamento scontrino/banca:** richiede lo stesso importo esatto e una data entro 3 giorni; se la banca registra un importo diverso (mancia, arrotondamento, pagamento diviso) non abbina e va collegato o corretto a mano. Ogni scontrino copre al massimo un movimento.
 - **Import:** se due acquisti identici nello stesso giorno sono davvero distinti ma già uno è presente, il secondo viene saltato (cambia la descrizione per importarlo). Il flag "già presente" dell'anteprima non si aggiorna se modifichi una riga; il controllo definitivo avviene al salvataggio.
 - **Scontrini:** le foto non vengono conservate (solo i dati estratti); formato HEIC non supportato dal server (il browser di solito lo converte); il costo per scontrino va misurato.

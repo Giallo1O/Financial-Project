@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, Camera, PiggyBank, Menu, X, BarChart3, CalendarClock,
-  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut
+  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -12,10 +12,11 @@ const MAIN = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { to: '/transactions', label: 'Movimenti', icon: ArrowLeftRight },
   { to: '/groceries', label: 'Scontrino', icon: Camera, primary: true },
-  { to: '/budgets', label: 'Budget', icon: PiggyBank },
+  { to: '/shopping', label: 'Lista', icon: ListChecks },
 ];
 
 const MORE = [
+  { to: '/budgets', label: 'Budget', icon: PiggyBank },
   { to: '/analytics', label: 'Analisi', icon: BarChart3 },
   { to: '/recurring', label: 'Ricorrenti', icon: CalendarClock },
   { to: '/goals', label: 'Salvadanaio', icon: Target },

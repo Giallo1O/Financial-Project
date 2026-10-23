@@ -49,6 +49,7 @@ class AuthInterceptorTest {
 		MockHttpServletRequest request = withToken("good");
 		assertEquals(200, call(request).getStatus());
 		assertEquals(id, request.getAttribute(AuthInterceptor.USER_ID));
+		assertEquals("a", request.getAttribute(AuthInterceptor.USERNAME));
 	}
 
 	@Test

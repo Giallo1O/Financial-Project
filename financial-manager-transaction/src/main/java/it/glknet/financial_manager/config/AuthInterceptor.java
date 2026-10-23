@@ -29,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class AuthInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
 	public static final String USER_ID = "userId";
+	public static final String USERNAME = "username";
 
 	private final RestClient userService;
 
@@ -69,6 +70,7 @@ public class AuthInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 			Map<?, ?> me = userService.get().uri("/api/auth/me").header("Authorization", authorization)
 					.retrieve().body(Map.class);
 			request.setAttribute(USER_ID, UUID.fromString(String.valueOf(me.get("userId"))));
+			request.setAttribute(USERNAME, String.valueOf(me.get("username")));
 			return true;
 		} catch (HttpClientErrorException e) {
 			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

@@ -458,3 +458,61 @@ export async function learnCategoryRulesFromHistory() {
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/learn-from-history`, { method: 'POST' });
   return await response.json();
 }
+
+// ─── Lista della spesa ────────────────────────────────────────────────────
+
+const SHOP = `${TRANSACTION_API}/api/shopping-lists`;
+const json = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+export async function fetchShoppingLists() {
+  return (await authenticatedFetch(SHOP)).json();
+}
+
+export async function createShoppingList(name) {
+  return (await authenticatedFetch(SHOP, json('POST', { name }))).json();
+}
+
+/** Il proprietario elimina la lista, gli altri ne escono. */
+export async function deleteOrLeaveShoppingList(id) {
+  await authenticatedFetch(`${SHOP}/${id}`, { method: 'DELETE' });
+}
+
+/** Restituisce { code }: il codice con cui un'altra persona entra nella lista. */
+export async function createShoppingInvite(id) {
+  return (await authenticatedFetch(`${SHOP}/${id}/invite`, { method: 'POST' })).json();
+}
+
+export async function revokeShoppingInvite(id) {
+  await authenticatedFetch(`${SHOP}/${id}/invite`, { method: 'DELETE' });
+}
+
+export async function joinShoppingList(code) {
+  return (await authenticatedFetch(`${SHOP}/join`, json('POST', { code }))).json();
+}
+
+export async function fetchShoppingItems(listId) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items`)).json();
+}
+
+export async function addShoppingItem(listId, { name, quantity, unit }) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items`, json('POST', { name, quantity, unit }))).json();
+}
+
+/** checked e/o quantity; i campi omessi non cambiano. */
+export async function updateShoppingItem(listId, itemId, changes) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items/${itemId}`, json('PUT', changes))).json();
+}
+
+export async function deleteShoppingItem(listId, itemId) {
+  await authenticatedFetch(`${SHOP}/${listId}/items/${itemId}`, { method: 'DELETE' });
+}
+
+/** Toglie dalla lista le voci già prese. */
+export async function clearCheckedShoppingItems(listId) {
+  await authenticatedFetch(`${SHOP}/${listId}/items`, { method: 'DELETE' });
+}
+
+/** Prodotti che compri di solito (dai tuoi scontrini), con "due" = probabilmente da ricomprare. */
+export async function fetchShoppingSuggestions() {
+  return (await authenticatedFetch(`${SHOP}/suggestions`)).json();
+}
