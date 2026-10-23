@@ -82,6 +82,7 @@ services:
   # HTTPS dentro la rete privata Tailscale: https://finmanager.<nome-rete>.ts.net (vedi README, "HTTPS con Tailscale").
   # Parte solo se lo chiedi: docker compose --profile tailscale up -d
   # Non usa Funnel: l'app NON e' raggiungibile da internet, solo dai dispositivi della tua rete Tailscale.
+  # BOZZA MAI AVVIATA: da rivedere/adattare (nome dispositivo, versione immagine, destinazione in tailscale/serve.json).
   tailscale:
     image: tailscale/tailscale:stable
     profiles: ["tailscale"]

@@ -123,6 +123,14 @@ Per avere HTTPS solo in casa si usa **Tailscale**: vedi la sezione "HTTPS con Ta
 
 ## HTTPS con Tailscale
 
+> **Bozza da rivedere e adattare:** questa parte è scritta ma **mai avviata** (nessun account Tailscale né Docker disponibili durante lo sviluppo). Cosa controllare o cambiare:
+> - `docker-compose.yml`, servizio `tailscale`: nome del dispositivo (`TS_HOSTNAME=finmanager`), versione dell'immagine (`stable`), nome del profilo (`tailscale`).
+> - `tailscale/serve.json`: la destinazione `http://frontend-service:80` (il frontend nella rete di compose) e la porta 443. `${TS_CERT_DOMAIN}` va lasciato così: lo sostituisce Tailscale.
+> - `.env`: `TS_AUTHKEY` (solo al primo avvio).
+> - Variante Kubernetes/server: la porta `30000` del comando `tailscale serve`.
+> - Dopo che funziona: quali porte chiudere in `docker-compose.yml` (elenco in fondo alla sezione).
+> - Impostazioni da fare a mano nell'admin console: MagicDNS, HTTPS, scadenza della chiave, come dare accesso alle altre persone (vedi sotto).
+
 Tailscale crea una rete privata tra i tuoi dispositivi e dà al server un indirizzo `https://finmanager.<nome-rete>.ts.net` con certificato valido: nessuna porta aperta su internet e nessun certificato da installare sui telefoni. L'app si apre solo dai dispositivi collegati a Tailscale, **anche quando sei a casa** (l'app Tailscale sul telefono deve essere attiva). Non si usa Funnel, che invece pubblicherebbe l'app su internet.
 
 **Una volta sola, nell'admin console di Tailscale** (`login.tailscale.com/admin`)
