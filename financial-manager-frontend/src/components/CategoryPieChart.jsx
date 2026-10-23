@@ -158,7 +158,7 @@ const CategoryPieChart = ({
                   />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Legend
                 verticalAlign="bottom"
                 height={40}

@@ -2,9 +2,9 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet,
-  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock
+  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock, ShoppingCart, ListChecks
 } from 'lucide-react';
-import { removeAuth, getUserInfo } from '../auth';
+import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
 import './Sidebar.css';
 
@@ -57,6 +57,16 @@ const Sidebar = () => {
         <NavLink to="/goals" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <Target size={20} />
           <span>Salvadanaio</span>
+        </NavLink>
+
+        <NavLink to="/groceries" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <ShoppingCart size={20} />
+          <span>Spesa</span>
+        </NavLink>
+
+        <NavLink to="/shopping" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <ListChecks size={20} />
+          <span>Lista spesa</span>
         </NavLink>
 
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>

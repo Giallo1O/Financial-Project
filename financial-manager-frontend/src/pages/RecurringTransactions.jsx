@@ -15,7 +15,6 @@ import '../components/Components.css';
 const RecurringTransactions = () => {
   const [recurringList, setRecurringList] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('calendar'); // 'calendar' or 'list'
 
   // Calendar view state
@@ -38,7 +37,6 @@ const RecurringTransactions = () => {
 
   const loadAllData = async () => {
     try {
-      setLoading(true);
       const [recData, catData] = await Promise.all([
         fetchRecurringTransactions(),
         fetchCategories()
@@ -50,8 +48,6 @@ const RecurringTransactions = () => {
       }
     } catch (err) {
       console.error('Failed to load recurring transactions', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -213,7 +209,7 @@ const RecurringTransactions = () => {
       </header>
 
       {/* Overview Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Uscite Fisse Mensili</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--danger)', fontSize: '2rem' }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
+import CategoryRules from '../components/CategoryRules';
 import '../components/Components.css'; // Corrected path
 
 
@@ -129,14 +130,14 @@ const Categories = () => {
         <p className="text-muted">Manage available categories for transactions (Superuser Only).</p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '2rem' }}>
+      <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '2rem' }}>
         {/* Categories List */}
         <section className="glass-panel" style={{ padding: '1.5rem' }}>
           <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>Existing Categories</h3>
           {loading ? (
             <p className="text-muted">Loading categories...</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))', gap: '1rem' }}>
               {categories.map(cat => (
                 <div 
                   key={cat.id} 
@@ -483,6 +484,8 @@ const Categories = () => {
           </div>
         </section>
       </div>
+
+      <CategoryRules categories={categories} />
     </div>
   );
 };

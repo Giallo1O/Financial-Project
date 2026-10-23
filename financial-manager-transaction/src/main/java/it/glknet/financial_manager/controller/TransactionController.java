@@ -1,5 +1,6 @@
 package it.glknet.financial_manager.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,42 +12,46 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.CrossOrigin;
 
+import it.glknet.financial_manager.config.AuthInterceptor;
+import it.glknet.financial_manager.dto.ImportResult;
+import it.glknet.financial_manager.dto.ImportRow;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
+import it.glknet.financial_manager.service.CategoryRuleService;
 import it.glknet.financial_manager.service.CsvImportService;
-import it.glknet.financial_manager.service.TransactionProducer;
 import it.glknet.financial_manager.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/transactions")
-@CrossOrigin(origins = "http://localhost:3000") // Frontend Docker port
 @RequiredArgsConstructor
 public class TransactionController {
 
 	private final TransactionService service;
 	private final CsvImportService csvImportService;
-	private final TransactionProducer transactionProducer;
+	private final CategoryRuleService ruleService;
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public Transaction create(@RequestBody TransactionRequest request) {
-		return service.createTransaction(request);
+	public Transaction create(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestBody TransactionRequest request) {
+		return service.createTransaction(withUser(request, userId));
 	}
 
 	/**
-	 * GET /api/transactions?userId=xxx
-	 * GET /api/transactions?userId=xxx&month=3&year=2026
+	 * GET /api/transactions
+	 * GET /api/transactions?month=3&year=2026
+	 * L'utente e' quello del token, non un parametro.
 	 */
 	@GetMapping
 	public List<Transaction> getAll(
-			@RequestParam UUID userId,
+			@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam(required = false) Integer month,
 			@RequestParam(required = false) Integer year) {
 
@@ -57,22 +62,44 @@ public class TransactionController {
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> deleteTransaction(@PathVariable UUID id) {
-		service.deleteTransaction(id);
+	public ResponseEntity<Void> deleteTransaction(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@PathVariable UUID id) {
+		service.deleteTransaction(id, userId);
 		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping("/parse-csv")
-	public ResponseEntity<List<TransactionRequest>> parseCsv(@RequestParam("file") MultipartFile file) {
-		return ResponseEntity.ok(csvImportService.parseCsv(file));
+	public ResponseEntity<List<ImportRow>> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestParam("file") MultipartFile file) {
+		List<TransactionRequest> rows = csvImportService.parseCsv(file);
+		List<String> duplicates = service.findDuplicates(userId, rows);
+		List<CategoryRuleService.Suggestion> suggestions = ruleService.suggest(userId, rows);
+		List<ImportRow> preview = new ArrayList<>();
+		for (int i = 0; i < rows.size(); i++) {
+			TransactionRequest r = rows.get(i);
+			CategoryRuleService.Suggestion s = suggestions.get(i);
+			preview.add(new ImportRow(r.description(), r.amount(), r.type(), s != null ? s.categoryId() : r.categoryId(),
+					r.transactionDate(), duplicates.get(i) != null, duplicates.get(i),
+					s != null ? "Regola: " + s.keyword() : null));
+		}
+		return ResponseEntity.ok(preview);
 	}
 
 	@PostMapping("/bulk-import")
-	public ResponseEntity<Void> bulkImport(@RequestBody List<TransactionRequest> requests) {
-		for (TransactionRequest request : requests) {
-			transactionProducer.sendImportRequest(request);
+	public ResponseEntity<ImportResult> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestBody List<TransactionRequest> requests,
+			@RequestParam(defaultValue = "false") boolean learn) {
+		List<TransactionRequest> rows = requests.stream().map(r -> withUser(r, userId)).toList();
+		ImportResult result = service.importAll(userId, rows);
+		if (learn) {
+			ruleService.learn(userId, rows); // ricorda le categorie scelte per i prossimi import
 		}
-		return ResponseEntity.accepted().build();
+		return ResponseEntity.ok(result);
+	}
+
+	private static TransactionRequest withUser(TransactionRequest r, UUID userId) {
+		return new TransactionRequest(r.description(), r.amount(), r.type(), r.categoryId(), userId,
+				r.transactionDate());
 	}
 
 }

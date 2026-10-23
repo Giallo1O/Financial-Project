@@ -35,3 +35,9 @@ yarn-error.log*
 # OS Generated
 .DS_Store
 Thumbs.db
+
+# Eclipse
+.factorypath
+
+# Backup dei database (docker compose)
+backups/

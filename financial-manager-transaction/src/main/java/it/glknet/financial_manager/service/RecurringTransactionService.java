@@ -5,9 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.RecurringTransaction;
@@ -28,7 +30,14 @@ public class RecurringTransactionService {
         return recurringRepository.findByUserIdOrderByDayOfMonthAsc(userId);
     }
 
-    public RecurringTransaction save(RecurringTransaction item) {
+    private RecurringTransaction findOwned(UUID userId, UUID id) {
+        return recurringRepository.findById(id).filter(r -> userId.equals(r.getUserId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recurring transaction not found"));
+    }
+
+    public RecurringTransaction save(UUID userId, RecurringTransaction item) {
+        item.setId(null); // evita di sovrascrivere ricorrenze esistenti
+        item.setUserId(userId);
         if (item.getDayOfMonth() == null || item.getDayOfMonth() < 1 || item.getDayOfMonth() > 31) {
             item.setDayOfMonth(1);
         }
@@ -45,8 +54,8 @@ public class RecurringTransactionService {
         return recurringRepository.save(item);
     }
 
-    public RecurringTransaction update(UUID id, RecurringTransaction details) {
-        return recurringRepository.findById(id).map(r -> {
+    public RecurringTransaction update(UUID userId, UUID id, RecurringTransaction details) {
+        return java.util.Optional.of(findOwned(userId, id)).map(r -> {
             r.setDescription(details.getDescription());
             r.setAmount(details.getAmount());
             r.setType(details.getType());
@@ -64,15 +73,16 @@ public class RecurringTransactionService {
         }).orElseThrow(() -> new IllegalArgumentException("Recurring transaction not found"));
     }
 
-    public void delete(UUID id) {
-        recurringRepository.deleteById(id);
+    public void delete(UUID userId, UUID id) {
+        recurringRepository.delete(findOwned(userId, id));
     }
 
     @Transactional
-    public Transaction confirm(UUID id, LocalDate confirmationDate) {
-        RecurringTransaction recurring = recurringRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Recurring transaction not found"));
+    public Transaction confirm(UUID userId, UUID id, LocalDate confirmationDate) {
+        return generate(findOwned(userId, id), confirmationDate);
+    }
 
+    private Transaction generate(RecurringTransaction recurring, LocalDate confirmationDate) {
         LocalDate effectiveDate = confirmationDate != null ? confirmationDate : (recurring.getNextDueDate() != null ? recurring.getNextDueDate() : LocalDate.now());
 
         TransactionRequest txRequest = new TransactionRequest(
@@ -108,7 +118,7 @@ public class RecurringTransactionService {
         List<Transaction> generated = new ArrayList<>();
         for (RecurringTransaction r : dueList) {
             try {
-                Transaction tx = confirm(r.getId(), r.getNextDueDate());
+                Transaction tx = generate(r, r.getNextDueDate());
                 generated.add(tx);
                 log.info("Auto-confirmed recurring transaction {} ({}) for user {}", r.getId(), r.getDescription(), r.getUserId());
             } catch (Exception e) {

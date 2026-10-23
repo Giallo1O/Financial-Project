@@ -1,6 +1,5 @@
 import { getUserInfo, getToken, removeAuth } from './auth';
 
-const DASHBOARD_API = import.meta.env.VITE_DASHBOARD_API_URL || 'http://localhost:8081';
 const TRANSACTION_API = import.meta.env.VITE_TRANSACTION_API_URL || 'http://localhost:8080';
 const USER_API = import.meta.env.VITE_USER_API_URL || 'http://localhost:8082';
 
@@ -34,7 +33,9 @@ export async function authenticatedFetch(url, options = {}) {
   }
 
   if (!response.ok) {
-    const error = new Error(`HTTP ${response.status}`);
+    // Se il server spiega il motivo (campo "message") lo uso, altrimenti il codice HTTP
+    const body = await response.json().catch(() => null);
+    const error = new Error(body?.message || `HTTP ${response.status}`);
     error.status = response.status;
     throw error;
   }
@@ -224,7 +225,8 @@ export async function parseCsv(file) {
   return await response.json();
 }
 
-export async function bulkImportTransactions(transactions) {
+/** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
+export async function bulkImportTransactions(transactions, learn = false) {
   const userId = getCurrentUserId();
   const payload = transactions.map(t => ({
     ...t,
@@ -233,35 +235,12 @@ export async function bulkImportTransactions(transactions) {
     categoryId: t.categoryId === '' ? null : t.categoryId
   }));
 
-  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import`, {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import?learn=${learn}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   return response;
-}
-
-// ─── Dashboard ────────────────────────────────────────────────────────────
-
-export async function fetchDashboardStats({ month, year } = {}) {
-  const userId = getCurrentUserId();
-  let url = `${DASHBOARD_API}/api/dashboard/stats?userId=${encodeURIComponent(userId)}`;
-  if (month != null && year != null) {
-    url += `&month=${month}&year=${year}`;
-  }
-  const response = await authenticatedFetch(url);
-  const data = await response.json();
-  
-  if (data.categoryExpenses) {
-    const categories = await fetchCategories();
-    const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
-    data.categoryExpenses = data.categoryExpenses.map(item => ({
-        ...item,
-        categoryColor: categoryMap[item.categoryId] ? categoryMap[item.categoryId].color : '#6b7280'
-    }));
-  }
-  
-  return data;
 }
 
 // ─── Savings Goals ────────────────────────────────────────────────────────
@@ -391,3 +370,149 @@ export async function processAutoRecurringTransactions() {
   return await response.json();
 }
 
+// ─── Scontrini (spesa alimentare) ──────────────────────────────────────────
+
+/** Legge 1-4 foto/PDF dello stesso scontrino con l'AI; restituisce una bozza, non salva nulla. */
+export async function scanReceipt(files) {
+  const formData = new FormData();
+  files.forEach(f => formData.append('file', f));
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/scan`, {
+    method: 'POST',
+    body: formData,
+  });
+  return await response.json();
+}
+
+export async function saveReceipt(receipt) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(receipt),
+  });
+  return await response.json();
+}
+
+/** Movimenti gia' presenti (es. importati dalla banca) che potrebbero essere questo scontrino. */
+export async function fetchReceiptMatches(date, total) {
+  const response = await authenticatedFetch(
+    `${TRANSACTION_API}/api/receipts/match?date=${date}&total=${encodeURIComponent(total)}`
+  );
+  return await response.json();
+}
+
+export async function fetchReceipts() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts`);
+  return await response.json();
+}
+
+export async function fetchReceipt(id) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/${id}`);
+  return await response.json();
+}
+
+export async function deleteReceipt(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/receipts/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchProducts() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/products`);
+  return await response.json();
+}
+
+export async function fetchProductHistory(name, unit) {
+  const response = await authenticatedFetch(
+    `${TRANSACTION_API}/api/receipts/products/history?name=${encodeURIComponent(name)}&unit=${encodeURIComponent(unit)}`
+  );
+  return await response.json();
+}
+
+/** from/to in formato yyyy-MM-dd */
+export async function fetchFoodSpending(from, to) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/receipts/spending?from=${from}&to=${to}`);
+  return await response.json();
+}
+
+// ─── Regole di categorizzazione automatica ────────────────────────────────
+
+export async function fetchCategoryRules() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules`);
+  return await response.json();
+}
+
+/** Crea la regola, o ne cambia la categoria se la parola chiave esiste già. */
+export async function saveCategoryRule(keyword, categoryId) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keyword, categoryId }),
+  });
+  return await response.json();
+}
+
+export async function deleteCategoryRule(id) {
+  await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/${id}`, { method: 'DELETE' });
+}
+
+/** Crea regole dalle transazioni già categorizzate; restituisce { created }. */
+export async function learnCategoryRulesFromHistory() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/learn-from-history`, { method: 'POST' });
+  return await response.json();
+}
+
+// ─── Lista della spesa ────────────────────────────────────────────────────
+
+const SHOP = `${TRANSACTION_API}/api/shopping-lists`;
+const json = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+export async function fetchShoppingLists() {
+  return (await authenticatedFetch(SHOP)).json();
+}
+
+export async function createShoppingList(name) {
+  return (await authenticatedFetch(SHOP, json('POST', { name }))).json();
+}
+
+/** Il proprietario elimina la lista, gli altri ne escono. */
+export async function deleteOrLeaveShoppingList(id) {
+  await authenticatedFetch(`${SHOP}/${id}`, { method: 'DELETE' });
+}
+
+/** Restituisce { code }: il codice con cui un'altra persona entra nella lista. */
+export async function createShoppingInvite(id) {
+  return (await authenticatedFetch(`${SHOP}/${id}/invite`, { method: 'POST' })).json();
+}
+
+export async function revokeShoppingInvite(id) {
+  await authenticatedFetch(`${SHOP}/${id}/invite`, { method: 'DELETE' });
+}
+
+export async function joinShoppingList(code) {
+  return (await authenticatedFetch(`${SHOP}/join`, json('POST', { code }))).json();
+}
+
+export async function fetchShoppingItems(listId) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items`)).json();
+}
+
+export async function addShoppingItem(listId, { name, quantity, unit }) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items`, json('POST', { name, quantity, unit }))).json();
+}
+
+/** checked e/o quantity; i campi omessi non cambiano. */
+export async function updateShoppingItem(listId, itemId, changes) {
+  return (await authenticatedFetch(`${SHOP}/${listId}/items/${itemId}`, json('PUT', changes))).json();
+}
+
+export async function deleteShoppingItem(listId, itemId) {
+  await authenticatedFetch(`${SHOP}/${listId}/items/${itemId}`, { method: 'DELETE' });
+}
+
+/** Toglie dalla lista le voci già prese. */
+export async function clearCheckedShoppingItems(listId) {
+  await authenticatedFetch(`${SHOP}/${listId}/items`, { method: 'DELETE' });
+}
+
+/** Prodotti che compri di solito (dai tuoi scontrini), con "due" = probabilmente da ricomprare. */
+export async function fetchShoppingSuggestions() {
+  return (await authenticatedFetch(`${SHOP}/suggestions`)).json();
+}

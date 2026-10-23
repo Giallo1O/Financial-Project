@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Financial Manager</title>
+    <!-- viewport-fit=cover: usa tutto lo schermo (notch); le zone sicure si gestiscono nel CSS con env(safe-area-inset-*) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>FinManager</title>
+
+    <!-- App installabile (Android: "Installa app"; iPhone: Condividi > "Aggiungi alla schermata Home") -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#12100e" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="FinManager" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <div id="root"></div>

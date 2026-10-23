@@ -33,7 +33,7 @@ const ImportTransactions = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
-  const [isDragging, setIsDragging] = useState(false);
+  const [learn, setLearn] = useState(true); // ricorda le categorie scelte per i prossimi import
   
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -63,16 +63,10 @@ const ImportTransactions = () => {
 
   const onDragOver = (e) => {
     e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const onDragLeave = () => {
-    setIsDragging(false);
   };
 
   const onDrop = (e) => {
     e.preventDefault();
-    setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.type === 'text/csv' || droppedFile.name.endsWith('.csv'))) {
       setFile(droppedFile);
@@ -91,6 +85,7 @@ const ImportTransactions = () => {
       setTransactions(data.map(t => ({
         ...t, 
         tempId: crypto.randomUUID(),
+        suggestedCategoryId: t.categoryNote ? t.categoryId : null, // categoria proposta da una regola
         type: t.type || 'USCITA',
         transactionDate: t.transactionDate ? parseISO(t.transactionDate) : new Date()
       })));
@@ -114,6 +109,12 @@ const ImportTransactions = () => {
     setTransactions(prev => prev.filter(t => t.tempId !== tempId));
   };
 
+  const duplicateCount = transactions.filter(t => t.duplicate).length;
+
+  const handleRemoveDuplicates = () => {
+    setTransactions(prev => prev.filter(t => !t.duplicate));
+  };
+
   const handleNextToConfirm = () => {
     if (transactions.length === 0) {
       setMessage({ text: 'No transactions to import.', type: 'error' });
@@ -125,17 +126,23 @@ const ImportTransactions = () => {
   const handleFinalConfirm = async () => {
     setIsLoading(true);
     try {
-      const payload = transactions.map(({ tempId, transactionDate, ...rest }) => ({
+      // i campi usati solo dalla UI non vanno inviati al backend
+      // eslint-disable-next-line no-unused-vars
+      const payload = transactions.map(({ tempId, duplicate, duplicateNote, categoryNote, suggestedCategoryId, transactionDate, ...rest }) => ({
         ...rest,
         transactionDate: format(transactionDate, 'yyyy-MM-dd'),
         type: rest.type.toUpperCase()
       }));
       
-      const res = await bulkImportTransactions(payload);
+      const res = await bulkImportTransactions(payload, learn);
 
       if (res.ok) {
-        setMessage({ text: 'Success! Transactions imported.', type: 'success' });
-        setTimeout(() => navigate('/transactions'), 1500);
+        const { imported, skipped } = await res.json();
+        setMessage({
+          text: `Importate ${imported} transazioni` + (skipped ? `, ${skipped} saltate perché già presenti.` : '.'),
+          type: 'success'
+        });
+        setTimeout(() => navigate('/transactions'), skipped ? 3000 : 1500);
       } else {
         setMessage({ text: 'Import failed. Please try again.', type: 'error' });
       }
@@ -191,7 +198,6 @@ const ImportTransactions = () => {
         {currentStep === 1 && (
           <div className="glass-panel dropzone-container fade-in"
                onDragOver={onDragOver}
-               onDragLeave={onDragLeave}
                onDrop={onDrop}
                onClick={() => fileInputRef.current.click()}>
             <input 
@@ -237,6 +243,11 @@ const ImportTransactions = () => {
             <div className="preview-actions">
               <h3>Verify & Polish ({transactions.length} rows)</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
+                {duplicateCount > 0 && (
+                  <button className="btn btn-glass" onClick={handleRemoveDuplicates}>
+                    Rimuovi {duplicateCount} già present{duplicateCount === 1 ? 'e' : 'i'}
+                  </button>
+                )}
                 <button className="btn btn-glass" onClick={() => setCurrentStep(1)}>
                   Back
                 </button>
@@ -260,8 +271,13 @@ const ImportTransactions = () => {
                 </thead>
                 <tbody>
                   {transactions.map(t => (
-                    <tr key={t.tempId}>
+                    <tr key={t.tempId} style={t.duplicate ? { opacity: 0.55 } : undefined}>
                       <td>
+                        {t.duplicate && (
+                          <span title="Verrà saltato al salvataggio" style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>
+                            {t.duplicateNote || 'Già presente'}
+                          </span>
+                        )}
                         <input 
                           type="text" 
                           value={t.description || ''} 
@@ -309,6 +325,11 @@ const ImportTransactions = () => {
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
                         </select>
+                        {t.categoryNote && t.categoryId === t.suggestedCategoryId && (
+                          <span title="Categoria suggerita da una tua regola" style={{ fontSize: '0.75rem', color: 'var(--accent-secondary)' }}>
+                            {t.categoryNote}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <button className="btn-icon" onClick={() => handleRemoveRow(t.tempId)} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -348,6 +369,15 @@ const ImportTransactions = () => {
                 <span className="stat-label">Expenses</span>
               </div>
             </div>
+
+            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', margin: '1rem 0', cursor: 'pointer' }}>
+              <input type="checkbox" checked={learn} onChange={(e) => setLearn(e.target.checked)}
+                style={{ width: 'auto', margin: 0, padding: 0 }} />
+              <span>
+                Ricorda le categorie scelte per i prossimi import
+                <span className="text-muted text-sm"> ({transactions.filter(t => t.categoryId).length} righe con categoria)</span>
+              </span>
+            </label>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
               <button className="btn btn-glass" onClick={() => setCurrentStep(2)}>

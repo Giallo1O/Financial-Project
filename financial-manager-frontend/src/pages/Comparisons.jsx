@@ -197,7 +197,7 @@ const Comparisons = () => {
       </header>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
+      <div className="tabs-scroll" style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>
         <button
           onClick={() => setActiveTab('mom')}
           className={`btn ${activeTab === 'mom' ? 'btn-primary' : 'btn-glass'}`}
@@ -231,9 +231,9 @@ const Comparisons = () => {
       {/* MoM View */}
       {activeTab === 'mom' && (
         <div className="glass-panel" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
             <h3 style={{ margin: 0 }}>Paragone tra due mesi</h3>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <input
                 type="month"
                 value={getMonthKey(monthB)}
@@ -322,7 +322,7 @@ const Comparisons = () => {
             <Info size={16} className="text-muted" title="Mostra come sono distribuite le uscite tra i vari tag associati alle categorie." />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'center' }}>
+          <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'center' }}>
             <div style={{ height: '400px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -399,7 +399,7 @@ const Comparisons = () => {
           </div>
 
           {/* 3 Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(158, 85, 69, 0.12)', border: '1px solid rgba(158, 85, 69, 0.3)' }}>
               <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Spese Fisse (Necessità)</span>
               <h3 style={{ margin: '0.5rem 0', color: '#ff9b82', fontSize: '1.6rem' }}>
@@ -508,7 +508,7 @@ const Comparisons = () => {
           </div>
 
           {/* Grafico a Torta & Ripartizione */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem', alignItems: 'center' }}>
             <div style={{ height: '260px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
