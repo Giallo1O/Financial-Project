@@ -62,12 +62,21 @@ public class HomeAssistantTodo {
 	private final HomeAssistantAuth auth;
 	private final RestClient http;
 
+	@org.springframework.beans.factory.annotation.Autowired
 	public HomeAssistantTodo(HomeAssistantAuth auth) {
+		this(auth, RestClient.builder().requestFactory(timeouts()));
+	}
+
+	HomeAssistantTodo(HomeAssistantAuth auth, RestClient.Builder builder) {
 		this.auth = auth;
+		this.http = builder.build();
+	}
+
+	private static SimpleClientHttpRequestFactory timeouts() {
 		SimpleClientHttpRequestFactory timeouts = new SimpleClientHttpRequestFactory();
 		timeouts.setConnectTimeout(Duration.ofSeconds(3));
 		timeouts.setReadTimeout(Duration.ofSeconds(8));
-		this.http = RestClient.builder().requestFactory(timeouts).build();
+		return timeouts;
 	}
 
 	/** La persona ha collegato il suo account HA e scelto la lista della spesa. */
@@ -81,7 +90,7 @@ public class HomeAssistantTodo {
 		Map<String, Object> body = new HashMap<>();
 		body.put("entity_id", entity);
 		body.put("status", List.of("needs_action", "completed"));
-		Map<String, Object> res = call(userId, "get_items?return_response", body);
+		Map<String, Object> res = (Map<String, Object>) call(userId, "get_items?return_response", body);
 		Map<String, Object> byEntity = (Map<String, Object>) (res == null ? null : res.get("service_response"));
 		Map<String, Object> list = (Map<String, Object>) (byEntity == null ? null : byEntity.get(entity));
 		List<Item> out = new ArrayList<>();
@@ -126,12 +135,16 @@ public class HomeAssistantTodo {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Map<String, Object> call(UUID userId, String service, Map<String, Object> body) {
+	/**
+	 * La risposta e' un oggetto solo con return_response (get_items); gli altri servizi restituiscono l'elenco degli
+	 * stati cambiati, che non serve: per questo il tipo e' generico.
+	 */
+	private Object call(UUID userId, String service, Map<String, Object> body) {
 		String baseUrl = auth.usableLink(userId).map(HomeAssistantLink::getBaseUrl)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Home Assistant non collegato"));
 		try {
 			return http.post().uri(baseUrl + "/api/services/todo/" + service)
-					.header("Authorization", "Bearer " + auth.accessToken(userId)).body(body).retrieve().body(Map.class);
+					.header("Authorization", "Bearer " + auth.accessToken(userId)).body(body).retrieve().body(Object.class);
 		} catch (HttpClientErrorException.Unauthorized e) {
 			auth.forgetAccess(userId); // token non piu' valido: al prossimo giro se ne chiede uno nuovo
 			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Home Assistant ha rifiutato l'accesso: riprova");
