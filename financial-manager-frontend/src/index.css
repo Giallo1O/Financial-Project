@@ -212,6 +212,15 @@ option {
   font-size: 1rem;
 }
 
+/* Un pulsante disattivato deve sembrarlo: senza, era identico a quello attivo */
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   background: var(--accent-gradient);
   color: white;
