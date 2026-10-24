@@ -464,6 +464,18 @@ export async function deleteCategoryRule(id) {
   await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/${id}`, { method: 'DELETE' });
 }
 
+/** Applica le regole ai movimenti già salvati senza categoria; restituisce { updated }. */
+export async function applyCategoryRules() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/apply`, { method: 'POST' });
+  return await response.json();
+}
+
+/** Movimenti senza categoria raggruppati per esercente: [{ keyword, type, count, total, examples }]. */
+export async function fetchUncategorizedMerchants() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/uncategorized`);
+  return await response.json();
+}
+
 /** Crea regole dalle transazioni già categorizzate; restituisce { created }. */
 export async function learnCategoryRulesFromHistory() {
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/learn-from-history`, { method: 'POST' });

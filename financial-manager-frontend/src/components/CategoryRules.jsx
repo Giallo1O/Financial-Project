@@ -5,7 +5,7 @@ import {
 } from '../api';
 
 /** Regole "parola chiave → categoria" usate per proporre la categoria quando importi un estratto conto. */
-const CategoryRules = ({ categories }) => {
+const CategoryRules = ({ categories, version }) => {
   const [rules, setRules] = useState([]);
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -14,7 +14,7 @@ const CategoryRules = ({ categories }) => {
   const load = useCallback(() => {
     fetchCategoryRules().then(setRules).catch(() => setMessage('Impossibile caricare le regole'));
   }, []);
-  useEffect(() => { load(); }, [load, categories]);
+  useEffect(() => { load(); }, [load, categories, version]);
 
   const byId = Object.fromEntries(categories.map(c => [c.id, c]));
 
