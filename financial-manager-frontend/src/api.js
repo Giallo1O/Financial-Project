@@ -609,3 +609,14 @@ export async function addGroupSettlement(id, settlement) {
 export async function deleteGroupSettlement(id, settlementId) {
   await authenticatedFetch(`${GRP}/${id}/settlements/${settlementId}`, { method: 'DELETE' });
 }
+
+// ─── Previsione e avvisi ──────────────────────────────────────────────────
+
+export async function fetchForecast() {
+  return (await authenticatedFetch(`${TRANSACTION_API}/api/forecast`)).json();
+}
+
+/** [{ type, severity: 'danger'|'warning'|'info', message, link }], i più gravi per primi. */
+export async function fetchAlerts() {
+  return (await authenticatedFetch(`${TRANSACTION_API}/api/alerts`)).json();
+}

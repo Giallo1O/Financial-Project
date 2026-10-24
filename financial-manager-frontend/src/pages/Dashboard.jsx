@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import AccountSummary from '../components/AccountSummary';
 import CategoryPieChart from '../components/CategoryPieChart';
+import Insights from '../components/Insights';
 import { fetchTransactions, fetchCategories } from '../api';
 
 const Dashboard = () => {
@@ -106,6 +107,8 @@ const Dashboard = () => {
             gap: '1.5rem',
           }}
         >
+          <Insights />
+
           {/* Top — cash flow summary (Full Width) */}
           <section>
             <AccountSummary transactions={transactions} />
