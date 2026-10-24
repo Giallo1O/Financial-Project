@@ -21,9 +21,9 @@ import './ImportTransactions.css';
 registerLocale('it', it);
 
 const STEPS = [
-  { id: 1, label: 'Upload', icon: Upload },
-  { id: 2, label: 'Review', icon: List },
-  { id: 3, label: 'Confirm', icon: CheckCircle2 },
+  { id: 1, label: 'Carica', icon: Upload },
+  { id: 2, label: 'Controlla', icon: List },
+  { id: 3, label: 'Conferma', icon: CheckCircle2 },
 ];
 
 const ImportTransactions = () => {
@@ -57,7 +57,7 @@ const ImportTransactions = () => {
       setFile(selectedFile);
       setMessage({ text: '', type: '' });
     } else if (selectedFile) {
-      setMessage({ text: 'Please select a valid CSV file.', type: 'error' });
+      setMessage({ text: 'Seleziona un file CSV valido.', type: 'error' });
     }
   };
 
@@ -72,7 +72,7 @@ const ImportTransactions = () => {
       setFile(droppedFile);
       setMessage({ text: '', type: '' });
     } else {
-      setMessage({ text: 'Please drop a valid CSV file.', type: 'error' });
+      setMessage({ text: 'Trascina un file CSV valido.', type: 'error' });
     }
   };
 
@@ -93,7 +93,7 @@ const ImportTransactions = () => {
       setMessage({ text: '', type: '' });
     } catch (error) {
       console.error('Upload Error:', error);
-      setMessage({ text: 'Failed to parse CSV. Check the file format.', type: 'error' });
+      setMessage({ text: 'Non riesco a leggere il CSV. Controlla il formato del file.', type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -144,7 +144,7 @@ const ImportTransactions = () => {
         });
         setTimeout(() => navigate('/transactions'), skipped ? 3000 : 1500);
       } else {
-        setMessage({ text: 'Import failed. Please try again.', type: 'error' });
+        setMessage({ text: 'Importazione non riuscita. Riprova.', type: 'error' });
       }
     } catch (error) {
       setMessage({ text: 'Network error during import.', type: 'error' });
@@ -158,8 +158,8 @@ const ImportTransactions = () => {
     <div className="main-content fade-in">
       <div className="import-wizard">
         <div className="header-section">
-          <h1 className="text-gradient">Import Transactions</h1>
-          <p className="text-muted">Effortlessly bulk-upload your data using CSV files</p>
+          <h1 className="text-gradient">Importa movimenti</h1>
+          <p className="text-muted">Carica l'estratto conto della banca in formato CSV</p>
         </div>
 
         {/* Stepper indicator */}
@@ -211,8 +211,8 @@ const ImportTransactions = () => {
               <Upload size={64} strokeWidth={1.5} />
             </div>
             <div>
-              <h3>{file ? file.name : 'Click or drag CSV file here'}</h3>
-              <p className="text-muted">Maximum file size: 5MB</p>
+              <h3>{file ? file.name : 'Clicca o trascina qui il file CSV'}</h3>
+              <p className="text-muted">Dimensione massima: 5 MB</p>
             </div>
             
             {file && (
@@ -231,7 +231,7 @@ const ImportTransactions = () => {
               }}
               style={{ marginTop: '1rem', padding: '0.75rem 3rem' }}
             >
-              {isLoading ? 'Processing...' : 'Analyze Data'}
+              {isLoading ? 'Analisi in corso...' : 'Analizza file'}
               {!isLoading && <ChevronRight size={18} />}
             </button>
           </div>
@@ -241,7 +241,7 @@ const ImportTransactions = () => {
         {currentStep === 2 && (
           <div className="fade-in">
             <div className="preview-actions">
-              <h3>Verify & Polish ({transactions.length} rows)</h3>
+              <h3>Controlla e correggi ({transactions.length} righe)</h3>
               <div style={{ display: 'flex', gap: '1rem' }}>
                 {duplicateCount > 0 && (
                   <button className="btn btn-glass" onClick={handleRemoveDuplicates}>
@@ -249,10 +249,10 @@ const ImportTransactions = () => {
                   </button>
                 )}
                 <button className="btn btn-glass" onClick={() => setCurrentStep(1)}>
-                  Back
+                  Indietro
                 </button>
                 <button className="btn btn-primary" onClick={handleNextToConfirm}>
-                  Next Step <ArrowRight size={18} />
+                  Avanti <ArrowRight size={18} />
                 </button>
               </div>
             </div>
@@ -261,11 +261,11 @@ const ImportTransactions = () => {
               <table className="import-preview-table">
                 <thead>
                   <tr>
-                    <th>Description</th>
-                    <th style={{ width: '120px' }}>Amount</th>
-                    <th style={{ width: '130px' }}>Type</th>
-                    <th style={{ width: '150px' }}>Date</th>
-                    <th style={{ width: '180px' }}>Category</th>
+                    <th>Descrizione</th>
+                    <th style={{ width: '120px' }}>Importo</th>
+                    <th style={{ width: '130px' }}>Tipo</th>
+                    <th style={{ width: '150px' }}>Data</th>
+                    <th style={{ width: '180px' }}>Categoria</th>
                     <th style={{ width: '50px' }}></th>
                   </tr>
                 </thead>
@@ -300,8 +300,8 @@ const ImportTransactions = () => {
                           onChange={(e) => handleRowChange(t.tempId, 'type', e.target.value)}
                           className="form-select"
                         >
-                          <option value="USCITA">Expense</option>
-                          <option value="ENTRATA">Income</option>
+                          <option value="USCITA">Uscita</option>
+                          <option value="ENTRATA">Entrata</option>
                         </select>
                       </td>
                       <td>
@@ -348,25 +348,25 @@ const ImportTransactions = () => {
         {currentStep === 3 && (
           <div className="glass-panel summary-card fade-in">
             <CheckCircle2 size={64} color="var(--success)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
-            <h2>Ready to Import!</h2>
-            <p className="text-muted">Please confirm the following data summary before final save</p>
+            <h2>Pronto per importare</h2>
+            <p className="text-muted">Controlla il riepilogo prima di salvare</p>
 
             <div className="summary-stats">
               <div className="stat-item">
                 <span className="stat-value">{transactions.length}</span>
-                <span className="stat-label">Transactions</span>
+                <span className="stat-label">Movimenti</span>
               </div>
               <div className="stat-item">
                 <span className="stat-value" style={{ color: 'var(--accent-secondary)' }}>
                   {transactions.filter(t => t.type === 'ENTRATA').length}
                 </span>
-                <span className="stat-label">Incomes</span>
+                <span className="stat-label">Entrate</span>
               </div>
               <div className="stat-item">
                 <span className="stat-value" style={{ color: 'var(--danger)' }}>
                   {transactions.filter(t => t.type === 'USCITA').length}
                 </span>
-                <span className="stat-label">Expenses</span>
+                <span className="stat-label">Uscite</span>
               </div>
             </div>
 
@@ -381,10 +381,10 @@ const ImportTransactions = () => {
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
               <button className="btn btn-glass" onClick={() => setCurrentStep(2)}>
-                Back to Review
+                Torna al controllo
               </button>
               <button className="btn btn-primary" onClick={handleFinalConfirm} disabled={isLoading} style={{ padding: '0.75rem 3rem' }}>
-                {isLoading ? 'Saving...' : 'Confirm & Save All'}
+                {isLoading ? 'Salvataggio...' : 'Conferma e salva tutto'}
               </button>
             </div>
           </div>

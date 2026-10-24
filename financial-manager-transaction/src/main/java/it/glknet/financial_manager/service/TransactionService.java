@@ -36,12 +36,40 @@ public class TransactionService {
 
 	private final ReceiptRepository receiptRepository;
 
+	/** Importo massimo di un singolo movimento: oltre e' quasi certamente un errore di battitura o di import. */
+	public static final BigDecimal MAX_AMOUNT = new BigDecimal("1000000");
+
 	@Transactional
 	public Transaction createTransaction(TransactionRequest request) {
-		if (request.amount() == null || request.amount().signum() < 0 || request.type() == null
+		validate(request);
+		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
+				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
+				.transactionDate(request.transactionDate()).build();
+
+		return repository.save(transaction);
+	}
+
+	@Transactional
+	public Transaction updateTransaction(UUID id, TransactionRequest request) {
+		Transaction tx = repository.findById(id).filter(t -> request.userId().equals(t.getUserId()))
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transazione non trovata"));
+		validate(request);
+		tx.setDescription(request.description());
+		tx.setAmount(request.amount());
+		tx.setType(request.type());
+		tx.setCategoryId(request.categoryId());
+		tx.setTransactionDate(request.transactionDate());
+		return repository.save(tx);
+	}
+
+	private void validate(TransactionRequest request) {
+		if (request.amount() == null || request.amount().signum() <= 0 || request.type() == null
 				|| request.transactionDate() == null) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Servono importo (non negativo), tipo e data");
+					"Servono importo (maggiore di zero), tipo e data");
+		}
+		if (request.amount().compareTo(MAX_AMOUNT) > 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Importo troppo alto (massimo 1.000.000 €)");
 		}
 		// Controllo se esiste la categoria (se fornita)
 		if (request.categoryId() != null) {
@@ -50,12 +78,6 @@ public class TransactionService {
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La categoria inserita non esiste");
 			}
 		}
-
-		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
-				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
-				.transactionDate(request.transactionDate()).build();
-
-		return repository.save(transaction);
 	}
 
 	public List<Transaction> getAllTransactions(UUID userId) {
@@ -82,11 +104,15 @@ public class TransactionService {
 		LocalDate max = rows.stream().map(TransactionRequest::transactionDate).filter(Objects::nonNull)
 				.max(Comparator.naturalOrder()).orElse(null);
 		Map<String, Integer> existing = new HashMap<>();
+		// Stessa data, importo e tipo ma descrizione diversa (es. "Esselunga" scritto a mano, "Esselunga Milano" in banca)
+		Map<String, List<String>> sameAmount = new HashMap<>();
 		List<Receipt> coveringReceipts = new ArrayList<>();
 		if (min != null) {
 			for (Transaction t : repository.findByUserIdAndTransactionDateBetween(userId, min, max)) {
 				existing.merge(key(t.getTransactionDate(), t.getAmount(), t.getType(), t.getDescription()), 1,
 						Integer::sum);
+				sameAmount.computeIfAbsent(key(t.getTransactionDate(), t.getAmount(), t.getType(), ""),
+						k -> new ArrayList<>()).add(t.getDescription() == null ? "" : t.getDescription());
 			}
 			for (Receipt r : receiptRepository.findByUserIdAndPurchaseDateBetween(userId, min.minusDays(MATCH_DAYS),
 					max.plusDays(MATCH_DAYS))) {
@@ -98,10 +124,20 @@ public class TransactionService {
 		List<String> result = new ArrayList<>();
 		for (TransactionRequest r : rows) {
 			String k = key(r.transactionDate(), r.amount(), r.type(), r.description());
+			List<String> similar = sameAmount.getOrDefault(key(r.transactionDate(), r.amount(), r.type(), ""),
+					new ArrayList<>());
 			int left = existing.getOrDefault(k, 0);
 			existing.put(k, Math.max(0, left - 1));
 			if (left > 0) {
+				String same = key(null, null, null, r.description());
+				similar.stream().filter(d -> key(null, null, null, d).equals(same)).findFirst().ifPresent(similar::remove);
 				result.add("Già presente");
+				continue;
+			}
+			if (!similar.isEmpty()) {
+				String other = similar.remove(0);
+				existing.computeIfPresent(key(r.transactionDate(), r.amount(), r.type(), other), (x, n) -> n - 1);
+				result.add("Stessa data e importo di \"" + other + "\"");
 				continue;
 			}
 			Receipt covering = r.type() == TransactionType.USCITA ? takeCoveringReceipt(coveringReceipts, r) : null;

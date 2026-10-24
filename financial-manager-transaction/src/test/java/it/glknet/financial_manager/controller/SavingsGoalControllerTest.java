@@ -36,9 +36,20 @@ class SavingsGoalControllerTest {
 		controller.deposit(owner, goal.getId(), new AmountOperationRequest(new BigDecimal("20")));
 		assertTrue(goal.isCompleted());
 
-		controller.withdraw(owner, goal.getId(), new AmountOperationRequest(new BigDecimal("500")));
+		controller.withdraw(owner, goal.getId(), new AmountOperationRequest(new BigDecimal("30")));
 		assertFalse(goal.isCompleted());
-		assertEquals(0, BigDecimal.ZERO.compareTo(goal.getCurrentAmount())); // mai sotto zero
+		assertEquals(0, new BigDecimal("70").compareTo(goal.getCurrentAmount()));
+	}
+
+	@Test
+	void withdrawingMoreThanSavedOrNonPositiveAmountsAreRejected() {
+		for (BigDecimal bad : new BigDecimal[] { new BigDecimal("500"), BigDecimal.ZERO, new BigDecimal("-5") }) {
+			org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
+					() -> controller.withdraw(owner, goal.getId(), new AmountOperationRequest(bad)));
+		}
+		org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
+				() -> controller.deposit(owner, goal.getId(), new AmountOperationRequest(new BigDecimal("-100"))));
+		assertEquals(0, new BigDecimal("80").compareTo(goal.getCurrentAmount()));
 	}
 
 	@Test

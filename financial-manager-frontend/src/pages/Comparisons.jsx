@@ -8,6 +8,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Filter, Info, BarChart3, Layers, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { fetchTransactions, fetchCategories } from '../api';
+import { eur } from '../utils/format';
 
 const Comparisons = () => {
   const [allTransactions, setAllTransactions] = useState([]);
@@ -260,7 +261,7 @@ const Comparisons = () => {
                   contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '12px', boxShadow: 'var(--shadow-glass)' }}
                   itemStyle={{ color: 'var(--text-primary)' }}
                   cursor={{ fill: 'rgba(158, 85, 69, 0.15)' }}
-                  formatter={(v) => `€${v.toLocaleString('it-IT')}`}
+                  formatter={(v) => `${eur(v)}`}
                 />
                 <Legend />
                 <Bar dataKey={formatMonth(monthB)} fill="var(--text-muted)" radius={[4, 4, 0, 0]} />
@@ -304,7 +305,7 @@ const Comparisons = () => {
                   contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '12px', boxShadow: 'var(--shadow-glass)' }}
                   itemStyle={{ color: 'var(--text-primary)' }}
                   cursor={{ stroke: 'var(--accent-primary)', strokeWidth: 1, strokeDasharray: '5 5' }}
-                  formatter={(v) => `€${v.toLocaleString('it-IT')}`}
+                  formatter={(v) => `${eur(v)}`}
                 />
                 <Area type="monotone" dataKey="expense" name="Uscite" stroke="var(--danger)" fillOpacity={1} fill="url(#colorExpense)" />
                 {trendCategory === 'all' && <Area type="monotone" dataKey="income" name="Entrate" stroke="var(--success)" fill="transparent" strokeDasharray="5 5" />}
@@ -341,7 +342,7 @@ const Comparisons = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
-                    formatter={(v) => `€${v.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
+                    formatter={(v) => `${eur(v)}`}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -355,7 +356,7 @@ const Comparisons = () => {
                     <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: `hsl(${index * 45}, 70%, 60%)` }}></div>
                     <span>{item.name}</span>
                   </div>
-                  <span style={{ fontWeight: 600 }}>€{item.value.toLocaleString('it-IT')}</span>
+                  <span style={{ fontWeight: 600 }}>{eur(item.value)}</span>
                 </div>
               ))}
               {tagData.length === 0 && <p className="text-muted">Nessuna spesa tracciata questo mese.</p>}
@@ -403,7 +404,7 @@ const Comparisons = () => {
             <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(158, 85, 69, 0.12)', border: '1px solid rgba(158, 85, 69, 0.3)' }}>
               <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Spese Fisse (Necessità)</span>
               <h3 style={{ margin: '0.5rem 0', color: '#ff9b82', fontSize: '1.6rem' }}>
-                €{natureData.fixedExpenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                {eur(natureData.fixedExpenses)}
               </h3>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {natureData.fixedPct}% del totale uscite
@@ -413,7 +414,7 @@ const Comparisons = () => {
             <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(197, 160, 40, 0.12)', border: '1px solid rgba(197, 160, 40, 0.3)' }}>
               <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Spese Variabili (Desideri)</span>
               <h3 style={{ margin: '0.5rem 0', color: '#facc15', fontSize: '1.6rem' }}>
-                €{natureData.variableExpenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                {eur(natureData.variableExpenses)}
               </h3>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {natureData.variablePct}% del totale uscite
@@ -422,11 +423,11 @@ const Comparisons = () => {
 
             <div style={{ padding: '1.25rem', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
               <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Entrate / Risparmio Netto</span>
-              <h3 style={{ margin: '0.5rem 0', color: '#34d399', fontSize: '1.6rem' }}>
-                €{natureData.savings.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              <h3 style={{ margin: '0.5rem 0', color: natureData.totalIncome - natureData.totalExpenses < 0 ? 'var(--danger)' : '#34d399', fontSize: '1.6rem' }}>
+                {eur(natureData.totalIncome - natureData.totalExpenses)}
               </h3>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                su €{natureData.totalIncome.toLocaleString('it-IT', { minimumFractionDigits: 2 })} entrate
+                su {eur(natureData.totalIncome)} entrate
               </span>
             </div>
           </div>
@@ -438,17 +439,21 @@ const Comparisons = () => {
                 <Layers size={20} color="var(--accent-secondary)" />
                 <h4 style={{ margin: 0 }}>Analisi Regola 50 / 30 / 20</h4>
               </div>
-              {natureData.totalIncome > 0 ? (
-                natureData.ruleNeedsPct <= 50 ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
-                    <CheckCircle size={14} /> Ottimo bilanciamento spese fisse
+              {natureData.totalIncome > 0 && (() => {
+                // Il giudizio guarda tutte e tre le soglie, non solo le spese fisse
+                const problem = natureData.ruleNeedsPct > 50 ? 'Le spese fisse superano il 50%'
+                  : natureData.ruleWantsPct > 30 ? 'Le spese variabili superano il 30%'
+                  : natureData.ruleSavingsPct < 20 ? 'Il risparmio è sotto il 20%' : null;
+                return problem ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
+                    <AlertTriangle size={14} /> {problem}
                   </span>
                 ) : (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
-                    <AlertTriangle size={14} /> Le spese fisse superano il 50%
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '0.3rem 0.75rem', borderRadius: '12px' }}>
+                    <CheckCircle size={14} /> Rispetti la regola 50/30/20
                   </span>
-                )
-              ) : null}
+                );
+              })()}
             </div>
 
             <p className="text-muted text-sm" style={{ marginBottom: '1.5rem' }}>
@@ -460,7 +465,7 @@ const Comparisons = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
                   <span>Necessità / Fisse ({natureData.ruleNeedsPct}% su target ≤50%)</span>
-                  <span style={{ fontWeight: 600 }}>€{natureData.fixedExpenses.toLocaleString('it-IT')}</span>
+                  <span style={{ fontWeight: 600 }}>{eur(natureData.fixedExpenses)}</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
@@ -476,7 +481,7 @@ const Comparisons = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
                   <span>Desideri / Variabili ({natureData.ruleWantsPct}% su target ≤30%)</span>
-                  <span style={{ fontWeight: 600 }}>€{natureData.variableExpenses.toLocaleString('it-IT')}</span>
+                  <span style={{ fontWeight: 600 }}>{eur(natureData.variableExpenses)}</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
@@ -492,7 +497,7 @@ const Comparisons = () => {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
                   <span>Risparmio Netto ({natureData.ruleSavingsPct}% su target ≥20%)</span>
-                  <span style={{ fontWeight: 600 }}>€{natureData.savings.toLocaleString('it-IT')}</span>
+                  <span style={{ fontWeight: 600 }}>{eur(natureData.savings)}</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
@@ -527,7 +532,7 @@ const Comparisons = () => {
                   </Pie>
                   <Tooltip
                     contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-glass)', borderRadius: '8px' }}
-                    formatter={(v) => `€${v.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`}
+                    formatter={(v) => `${eur(v)}`}
                   />
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
@@ -545,7 +550,7 @@ const Comparisons = () => {
                       <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{tx.description || tx.category}</span>
                       <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tx.category}</span>
                     </div>
-                    <span style={{ fontWeight: 600, color: '#ff9b82' }}>€{tx.amount.toLocaleString('it-IT')}</span>
+                    <span style={{ fontWeight: 600, color: '#ff9b82' }}>{eur(tx.amount)}</span>
                   </div>
                 ))
               ) : (

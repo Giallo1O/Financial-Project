@@ -8,8 +8,8 @@ import {
   clearCheckedShoppingItems, fetchShoppingSuggestions
 } from '../api';
 import './Shopping.css';
+import { eur } from '../utils/format';
 
-const eur = (n) => Number(n || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const qtyText = (q) => Number(q).toLocaleString('it-IT', { maximumFractionDigits: 3 });
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const step = (unit) => (unit === 'kg' || unit === 'l' ? 0.5 : 1);

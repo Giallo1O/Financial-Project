@@ -6,6 +6,8 @@ import {
   ChevronLeft, ChevronRight, PiggyBank, AlertTriangle, CheckCircle, ArrowUpRight, TrendingUp, TrendingDown, Wallet, Calendar, Info
 } from 'lucide-react';
 import { fetchCategories, fetchTransactions } from '../api';
+import { eur } from '../utils/format';
+import CategoryIcon from '../components/CategoryIcon';
 
 const Budgets = () => {
   const [categories, setCategories] = useState([]);
@@ -49,7 +51,7 @@ const Budgets = () => {
       const percent = (spent / budget) * 100;
       
       let status = 'good';
-      if (percent >= 100) status = 'danger';
+      if (percent > 100) status = 'danger';
       else if (percent >= 85) status = 'warning';
 
       return {
@@ -131,7 +133,7 @@ const Budgets = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <span className="text-muted text-sm" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>Budget Totale</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-            <h2 style={{ fontSize: '2.5rem', margin: 0 }}>€{budgetStats.totalBudget.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</h2>
+            <h2 style={{ fontSize: '2.5rem', margin: 0 }}>{eur(budgetStats.totalBudget)}</h2>
           </div>
         </div>
         
@@ -139,7 +141,7 @@ const Budgets = () => {
           <span className="text-muted text-sm" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>Spesa Totale (Categorie a Budget)</span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
             <h2 style={{ fontSize: '2.5rem', margin: 0, color: budgetStats.totalPercent > 100 ? 'var(--danger)' : 'var(--text-primary)' }}>
-              €{budgetStats.totalSpent.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+              {eur(budgetStats.totalSpent)}
             </h2>
             <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>/ {budgetStats.totalPercent.toFixed(0)}%</span>
           </div>
@@ -185,11 +187,11 @@ const Budgets = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     border: `1px solid ${item.color}44`
                   }}>
-                    <Wallet size={20} style={{ color: item.color }} />
+                    <CategoryIcon name={item.icon} size={20} style={{ color: item.color }} />
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{item.name}</h3>
-                    <span className="text-muted text-sm">{item.status === 'danger' ? 'Limite Superato' : item.status === 'warning' ? 'Quasi al Limite' : 'In Regola'}</span>
+                    <span className="text-muted text-sm">{item.status === 'danger' ? 'Limite superato' : item.percent >= 100 ? 'Limite raggiunto' : item.status === 'warning' ? 'Quasi al limite' : 'In regola'}</span>
                   </div>
                 </div>
                 {item.status === 'danger' ? (
@@ -203,23 +205,21 @@ const Budgets = () => {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Speso: <strong>€{item.spent.toLocaleString('it-IT')}</strong></span>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Budget: €{item.budget.toLocaleString('it-IT')}</span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Speso: <strong>{eur(item.spent)}</strong></span>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Budget: {eur(item.budget)}</span>
                 </div>
-                <div style={{ height: '30px', width: '100%', position: 'relative' }}>
-                   <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{ spent: item.spent, budget: item.budget }]} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                        <XAxis type="number" hide domain={[0, Math.max(item.budget, item.spent) * 1.1]} />
-                        <YAxis type="category" dataKey="name" hide />
-                        <Bar 
-                          dataKey="spent" 
-                          fill={item.status === 'danger' ? 'var(--danger)' : item.status === 'warning' ? 'var(--warning)' : item.color || 'var(--accent-secondary)'} 
-                          radius={[0, 4, 4, 0]}
-                          barSize={20}
-                        />
-                        <ReferenceLine x={item.budget} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" label={{ position: 'top', value: 'Cap', fill: 'var(--text-muted)', fontSize: 10 }} />
-                      </BarChart>
-                   </ResponsiveContainer>
+                {/* Barra: la parte piena e' lo speso, la linea tratteggiata e' il budget */}
+                <div style={{ height: '12px', width: '100%', position: 'relative', background: 'rgba(197, 160, 40, 0.08)', borderRadius: '6px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{
+                    width: `${(item.spent / Math.max(item.budget, item.spent)) * 100}%`,
+                    height: '100%',
+                    borderRadius: '6px',
+                    background: item.status === 'danger' ? 'var(--danger)' : item.status === 'warning' ? 'var(--warning)' : item.color || 'var(--accent-secondary)',
+                    transition: 'width 0.8s ease'
+                  }} />
+                  {item.spent > item.budget && (
+                    <div title="Budget" style={{ position: 'absolute', top: '-4px', bottom: '-4px', left: `${(item.budget / item.spent) * 100}%`, borderLeft: '2px dashed rgba(255,255,255,0.6)' }} />
+                  )}
                 </div>
               </div>
 
@@ -231,7 +231,7 @@ const Budgets = () => {
                     fontWeight: 600, 
                     color: item.remaining < 0 ? 'var(--danger)' : 'var(--success)' 
                   }}>
-                    €{Math.abs(item.remaining).toLocaleString('it-IT')}
+                    {eur(Math.abs(item.remaining))}
                     {item.remaining < 0 && ' (Extra)'}
                   </span>
                 </div>

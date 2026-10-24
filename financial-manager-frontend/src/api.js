@@ -51,7 +51,7 @@ export async function loginUser(username, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
   });
-  if (!response.ok) throw new Error('Invalid username or password');
+  if (!response.ok) throw new Error('Username o password non corretti');
   return response.json(); // { token, username, userId }
 }
 
@@ -61,8 +61,8 @@ export async function registerUser(username, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
   });
-  if (response.status === 409) throw new Error('Username already taken');
-  if (!response.ok) throw new Error('Registration failed');
+  if (response.status === 409) throw new Error('Username già in uso');
+  if (!response.ok) throw new Error('Registrazione non riuscita');
   return response.json();
 }
 
@@ -86,7 +86,7 @@ function mapTransactions(list, categoryMap) {
       type: t.type ? t.type.toLowerCase() : '',
       amount: Number(t.amount),
       categoryId: t.categoryId,
-      category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
+      category: categoryInfo ? categoryInfo.name : 'Senza categoria',
       categoryColor: categoryInfo ? categoryInfo.color : '#6b7280', // default gray
       categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
       isFixed: categoryInfo ? Boolean(categoryInfo.fixed) : false,
@@ -189,23 +189,28 @@ export async function createTransaction(transactionData) {
     body: JSON.stringify(payload),
   });
 
-  const t = await response.json();
+  return toTransactionView(await response.json());
+}
 
-  const categories = await fetchCategories();
-  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
-  const categoryInfo = categoryMap[t.categoryId];
-
-  return {
-    id: t.id,
-    type: t.type ? t.type.toLowerCase() : '',
-    amount: Number(t.amount),
-    categoryId: t.categoryId,
-    category: categoryInfo ? categoryInfo.name : t.categoryId ?? '—',
-    categoryColor: categoryInfo ? categoryInfo.color : '#6b7280',
-    categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
-    description: t.description,
-    date: t.transactionDate || new Date().toISOString().split('T')[0],
+export async function updateTransaction(id, transactionData) {
+  const payload = {
+    description: transactionData.description || '',
+    amount: transactionData.amount,
+    type: transactionData.type ? transactionData.type.toUpperCase() : 'USCITA',
+    categoryId: transactionData.categoryId || null,
+    transactionDate: transactionData.date,
   };
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return toTransactionView(await response.json());
+}
+
+async function toTransactionView(t) {
+  const categories = await fetchCategories();
+  return mapTransactions([t], Object.fromEntries(categories.map(c => [c.id, c])))[0];
 }
 
 export async function deleteTransaction(id) {

@@ -54,11 +54,11 @@ const Categories = () => {
 
       if (editingCategory) {
         await updateCategory(editingCategory.id, categoryPayload);
-        setMessage({ type: 'success', text: 'Category updated successfully!' });
+        setMessage({ type: 'success', text: 'Categoria aggiornata.' });
         setEditingCategory(null);
       } else {
         await createCategory(categoryPayload);
-        setMessage({ type: 'success', text: 'Category created successfully!' });
+        setMessage({ type: 'success', text: 'Categoria creata.' });
       }
       setName('');
       setColor('#6366f1');
@@ -112,11 +112,11 @@ const Categories = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this category? All associated summaries will be removed from the dashboard.')) return;
+    if (!window.confirm('Eliminare questa categoria? I movimenti collegati resteranno senza categoria.')) return;
 
     try {
       await deleteCategory(id);
-      setMessage({ type: 'success', text: 'Category deleted successfully!' });
+      setMessage({ type: 'success', text: 'Categoria eliminata.' });
       loadCategories(); // Refresh list
     } catch (err) {
       setMessage({ type: 'error', text: `Failed to delete category: ${err.message}` });
@@ -126,14 +126,14 @@ const Categories = () => {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ marginBottom: '0.5rem' }}>Category Management</h1>
-        <p className="text-muted">Manage available categories for transactions (Superuser Only).</p>
+        <h1 style={{ marginBottom: '0.5rem' }}>Categorie</h1>
+        <p className="text-muted">Crea e modifica le categorie dei tuoi movimenti.</p>
       </header>
 
       <div className="stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '2rem' }}>
         {/* Categories List */}
         <section className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>Existing Categories</h3>
+          <h3 className="section-title" style={{ marginBottom: '1.5rem' }}>Le tue categorie</h3>
           {loading ? (
             <p className="text-muted">Loading categories...</p>
           ) : (
@@ -206,7 +206,7 @@ const Categories = () => {
                         e.currentTarget.style.backgroundColor = 'transparent';
                         e.currentTarget.style.color = 'var(--text-muted)';
                       }}
-                      title="Edit Category"
+                      title="Modifica categoria"
                     >
                       <Pencil size={14} />
                     </button>
@@ -232,7 +232,7 @@ const Categories = () => {
                         e.currentTarget.style.backgroundColor = 'transparent';
                         e.currentTarget.style.color = 'var(--text-muted)';
                       }}
-                      title="Delete Category"
+                      title="Elimina categoria"
                     >
                       <X size={14} />
                     </button>
@@ -248,7 +248,7 @@ const Categories = () => {
           <div className="glass-panel form-card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 className="section-title" style={{ marginBottom: 0 }}>
-                {editingCategory ? 'Edit Category' : 'Add New Category'}
+                {editingCategory ? 'Modifica categoria' : 'Nuova categoria'}
               </h3>
               {editingCategory && (
                 <button 
@@ -278,12 +278,12 @@ const Categories = () => {
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
-                <label>Category Name</label>
+                <label>Nome categoria</label>
                 <div className="input-wrapper">
                   <Type size={18} className="input-icon" />
                   <input
                     type="text"
-                    placeholder="e.g. Travel, Health..."
+                    placeholder="es. Viaggi, Salute..."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -292,7 +292,7 @@ const Categories = () => {
               </div>
 
               <div className="form-group">
-                <label>Color</label>
+                <label>Colore</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
                   {[
                     '#9e5545', '#c5a028', '#8b4513', '#cc7722', '#d2b48c', '#808000',
@@ -411,7 +411,7 @@ const Categories = () => {
                   <Palette size={18} className="input-icon" />
                   <input
                     type="text"
-                    placeholder="e.g. briefcase, shopping-cart..."
+                    placeholder="es. briefcase, shopping-cart..."
                     value={icon}
                     onChange={(e) => setIcon(e.target.value)}
                   />
@@ -473,10 +473,10 @@ const Categories = () => {
                 disabled={isSubmitting}
                 style={{ marginTop: '0.5rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
-                {isSubmitting ? (editingCategory ? 'Updating...' : 'Creating...') : (
+                {isSubmitting ? (editingCategory ? 'Salvataggio...' : 'Creazione...') : (
                   <>
                     {editingCategory ? <Check size={18} /> : <Plus size={18} />}
-                    <span>{editingCategory ? 'Save Changes' : 'Create Category'}</span>
+                    <span>{editingCategory ? 'Salva modifiche' : 'Crea categoria'}</span>
                   </>
                 )}
               </button>

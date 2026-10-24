@@ -9,12 +9,13 @@ import './Components.css';
 
 registerLocale('it', it);
 
-const TransactionsForm = ({ onAddTransaction }) => {
-  const [activeTab, setActiveTab] = useState('uscita'); // 'uscita' | 'entrata'
-  const [amount, setAmount] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [date, setDate] = useState(new Date());
-  const [description, setDescription] = useState('');
+const TransactionsForm = ({ onAddTransaction, editing, onCancelEdit }) => {
+  // In modifica il form parte dal movimento scelto (la pagina lo rimonta con una key diversa)
+  const [activeTab, setActiveTab] = useState(editing?.type === 'entrata' ? 'entrata' : 'uscita'); // 'uscita' | 'entrata'
+  const [amount, setAmount] = useState(editing ? String(editing.amount) : '');
+  const [categoryId, setCategoryId] = useState(editing?.categoryId || '');
+  const [date, setDate] = useState(editing?.date ? new Date(`${editing.date}T00:00:00`) : new Date());
+  const [description, setDescription] = useState(editing?.description || '');
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
 
@@ -45,7 +46,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
   return (
     <div className="glass-panel form-card">
       <h3 className="section-title" style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
-        Nuova Transazione
+        {editing ? 'Modifica movimento' : 'Nuova Transazione'}
       </h3>
       
       <div className="tabs">
@@ -75,6 +76,8 @@ const TransactionsForm = ({ onAddTransaction }) => {
             <input
               type="number"
               step="0.01"
+              min="0.01"
+              max="1000000"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -142,8 +145,14 @@ const TransactionsForm = ({ onAddTransaction }) => {
           className={`btn ${activeTab === 'uscita' ? 'btn-danger' : 'btn-success'} transaction-submit-btn`}
           disabled={loadingCats}
         >
-          {activeTab === 'uscita' ? 'Salva Uscita' : 'Salva Entrata'}
+          {editing ? 'Salva modifiche' : activeTab === 'uscita' ? 'Salva Uscita' : 'Salva Entrata'}
         </button>
+        {editing && (
+          <button type="button" className="btn" style={{ marginTop: '0.75rem', width: '100%' }}
+            onClick={onCancelEdit}>
+            Annulla
+          </button>
+        )}
       </form>
     </div>
   );

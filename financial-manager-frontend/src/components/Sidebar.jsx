@@ -36,17 +36,17 @@ const Sidebar = () => {
 
         <NavLink to="/transactions" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <ArrowLeftRight size={20} />
-          <span>Transactions</span>
+          <span>Movimenti</span>
         </NavLink>
 
         <NavLink to="/analytics" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <BarChart3 size={20} />
-          <span>Analytics</span>
+          <span>Analisi</span>
         </NavLink>
 
         <NavLink to="/budgets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <PiggyBank size={20} />
-          <span>Budgets</span>
+          <span>Budget</span>
         </NavLink>
 
         <NavLink to="/recurring" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -71,12 +71,12 @@ const Sidebar = () => {
 
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <TrendingUp size={20} />
-          <span>Comparisons</span>
+          <span>Confronti</span>
         </NavLink>
 
         <NavLink to="/categories" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <Tag size={20} />
-          <span>Categories</span>
+          <span>Categorie</span>
         </NavLink>
 
         <NavLink to="/import" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
@@ -93,12 +93,12 @@ const Sidebar = () => {
           title={privacyMode ? 'Disattiva Privacy Mode (mostra cifre)' : 'Attiva Privacy Mode (nascondi cifre)'}
         >
           {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
-          <span>{privacyMode ? 'Privacy: ON' : 'Privacy: OFF'}</span>
+          <span>{privacyMode ? 'Privacy: attiva' : 'Privacy: spenta'}</span>
         </button>
 
         <button onClick={handleLogout} className="logout-btn full-width">
           <LogOut size={20} />
-          <span>Logout</span>
+          <span>Esci</span>
         </button>
       </div>
     </aside>

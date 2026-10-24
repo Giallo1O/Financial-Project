@@ -1,8 +1,9 @@
 import React from 'react';
-import { Trash2, History, AlertCircle } from 'lucide-react';
+import { Trash2, Pencil, History, AlertCircle } from 'lucide-react';
 import './Components.css';
+import { eur } from '../utils/format';
 
-const TransactionHistory = ({ transactions, loading, onDelete }) => {
+const TransactionHistory = ({ transactions, loading, onDelete, onEdit }) => {
   if (loading) {
     return (
       <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
@@ -33,7 +34,7 @@ const TransactionHistory = ({ transactions, loading, onDelete }) => {
         </h3>
       </div>
       
-      <div style={{ overflowX: 'auto' }}>
+      <div className="history-wrap">
         <table className="history-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-glass)', textAlign: 'left' }}>
@@ -51,28 +52,33 @@ const TransactionHistory = ({ transactions, loading, onDelete }) => {
               const isIncome = tx.type === 'entrata';
               return (
                 <tr key={tx.id} className="history-row">
-                  <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                  <td className="h-date" style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                     {new Date(tx.date).toLocaleDateString('it-IT')}
                   </td>
-                  <td style={{ padding: '1rem' }}>
+                  <td className="h-desc" style={{ padding: '1rem' }}>
                     <div style={{ fontWeight: 500 }}>{tx.description || 'Senza descrizione'}</div>
                   </td>
-                  <td style={{ padding: '1rem' }}>
+                  <td className="h-cat" style={{ padding: '1rem' }}>
                     <span className="category-badge">
                       {tx.category}
                     </span>
                   </td>
-                  <td style={{
+                  <td className="h-amount" style={{
                     padding: '1rem',
                     textAlign: 'right',
                     fontWeight: '700',
                     color: isIncome ? 'var(--success)' : 'var(--danger)',
                     whiteSpace: 'nowrap'
                   }}>
-                    {isIncome ? '+' : '-'} €{Math.abs(tx.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    {isIncome ? '+' : '-'}{eur(Math.abs(tx.amount))}
                   </td>
                   {onDelete && (
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <td className="h-actions" style={{ padding: '1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      {onEdit && (
+                        <button onClick={() => onEdit(tx)} className="delete-btn edit-btn" title="Modifica movimento">
+                          <Pencil size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => onDelete(tx.id)}
                         className="delete-btn"

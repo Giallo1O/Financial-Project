@@ -9,6 +9,7 @@ import {
   deleteSavingsGoal, depositToSavingsGoal, withdrawFromSavingsGoal
 } from '../api';
 import '../components/Components.css';
+import { eur } from '../utils/format';
 
 const PRESET_COLORS = [
   '#9e5545', // terracotta
@@ -172,9 +173,9 @@ const SavingsGoals = () => {
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Totale Risparmiato</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--success)', fontSize: '2rem' }}>
-            €{totalSaved.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+            {eur(totalSaved)}
           </h2>
-          <span className="text-muted text-sm">su €{totalTarget.toLocaleString('it-IT', { minimumFractionDigits: 2 })} prefissati</span>
+          <span className="text-muted text-sm">su {eur(totalTarget)} prefissati</span>
         </div>
 
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
@@ -295,10 +296,10 @@ const SavingsGoals = () => {
                 <div style={{ marginTop: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem' }}>
                     <span style={{ fontSize: '1.5rem', fontWeight: 700, color: goal.completed ? 'var(--success)' : 'var(--text-primary)' }}>
-                      €{current.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                      {eur(current)}
                     </span>
                     <span className="text-muted text-sm">
-                      Target: €{target.toLocaleString('it-IT')}
+                      Target: {eur(target)}
                     </span>
                   </div>
 
@@ -315,7 +316,7 @@ const SavingsGoals = () => {
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '0.4rem', color: 'var(--text-muted)' }}>
                     <span>{pct}% raggiunto</span>
-                    <span>{goal.completed ? 'Completato! 🎉' : `Mancano: €${remaining.toLocaleString('it-IT')}`}</span>
+                    <span>{goal.completed ? 'Completato! 🎉' : `Mancano: ${eur(remaining)}`}</span>
                   </div>
                 </div>
 
@@ -506,7 +507,7 @@ const SavingsGoals = () => {
               {actionModal.type === 'deposit' ? 'Versa nel Salvadanaio' : 'Preleva dal Salvadanaio'}
             </h3>
             <p className="text-muted text-sm" style={{ marginBottom: '1.5rem' }}>
-              Obiettivo: <strong>{actionModal.goal?.name}</strong> (Attuale: €{Number(actionModal.goal?.currentAmount || 0).toLocaleString('it-IT')})
+              Obiettivo: <strong>{actionModal.goal?.name}</strong> (Attuale: {eur(Number(actionModal.goal?.currentAmount || 0))})
             </p>
 
             <form onSubmit={handleExecuteAction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

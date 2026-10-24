@@ -53,7 +53,7 @@ const Dashboard = () => {
     return Object.keys(totals).map(catId => {
       const category = categories.find(c => c.id === catId);
       return {
-        name: category ? category.name : 'Unknown',
+        name: category ? category.name : 'Senza categoria',
         value: totals[catId],
         color: category ? category.color : '#cbd5e1'
       };
@@ -76,8 +76,8 @@ const Dashboard = () => {
             <LayoutDashboard size={24} color="white" />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.8rem', marginBottom: '0.2rem' }}>Portfolio Overview</h1>
-            <p className="text-muted text-sm">Welcome back. Here's your summary for this month.</p>
+            <h1 style={{ fontSize: '1.8rem', marginBottom: '0.2rem' }}>Riepilogo</h1>
+            <p className="text-muted text-sm">Il tuo mese a colpo d'occhio.</p>
           </div>
         </div>
       </header>
@@ -96,7 +96,7 @@ const Dashboard = () => {
             }}
           />
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <h2>Loading portfolio data...</h2>
+          <h2>Caricamento dati...</h2>
         </div>
       ) : (
         <div
