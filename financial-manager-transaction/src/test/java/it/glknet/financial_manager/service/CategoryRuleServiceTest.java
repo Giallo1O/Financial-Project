@@ -169,6 +169,34 @@ class CategoryRuleServiceTest {
 	}
 
 	@Test
+	void sameKeywordCanHaveOneRuleForExpensesAndOneForIncome() {
+		List<CategoryRule> saved = new ArrayList<>();
+		when(categories.findByUserId(user)).thenReturn(List.of(shopping, subscriptions, salary));
+		when(categories.findById(any(UUID.class))).thenAnswer(i -> List.of(shopping, subscriptions, salary).stream()
+				.filter(c -> c.getId().equals(i.getArgument(0))).findFirst());
+		when(rules.findByUserId(user)).thenReturn(saved);
+		when(rules.save(any())).thenAnswer(i -> {
+			CategoryRule r = i.getArgument(0);
+			if (!saved.contains(r)) {
+				saved.add(r);
+			}
+			return r;
+		});
+
+		service.save(user, "Rossella", shopping.getId()); // uscite
+		service.save(user, "rossella", salary.getId()); // entrate: regola in piu', non sostituisce
+		service.save(user, "ROSSELLA", subscriptions.getId()); // di nuovo uscite: aggiorna la prima
+
+		assertEquals(2, saved.size());
+		assertEquals(subscriptions.getId(), saved.get(0).getCategoryId());
+		assertEquals(salary.getId(), saved.get(1).getCategoryId());
+		var s = service.suggest(user, List.of(row("ROSSELLA MEDAGLIA", TransactionType.USCITA, null),
+				row("ROSSELLA MEDAGLIA", TransactionType.ENTRATA, null)));
+		assertEquals(subscriptions.getId(), s.get(0).categoryId());
+		assertEquals(salary.getId(), s.get(1).categoryId());
+	}
+
+	@Test
 	void applyingRulesCategorizesOnlyUncategorizedMovementsOfTheRightType() {
 		givenRules(rule("bennet", shopping), rule("stipendio", salary));
 		Transaction bennet = uncategorized("BENNET 12", TransactionType.USCITA, "31.40");

@@ -39,7 +39,7 @@ const UncategorizedMerchants = ({ categories, onRulesChanged }) => {
   const assign = async (g) => {
     const c = choice[keyOf(g)] || {};
     const keyword = (c.keyword ?? g.keyword).trim();
-    const categoryId = c.categoryId || optionsFor(g)[0]?.id;
+    const categoryId = c.categoryId; // nessuna categoria proposta: va scelta, per non assegnare per sbaglio
     if (!categoryId) return;
     setBusy(true);
     try {
@@ -87,15 +87,17 @@ const UncategorizedMerchants = ({ categories, onRulesChanged }) => {
                     <PrivacyMask>{eur(g.total)}</PrivacyMask> · es. {g.examples.join(', ')}
                   </span>
                 </div>
-                <select className="form-select" value={c.categoryId || options[0]?.id || ''} aria-label="Categoria"
+                <select className="form-select" value={c.categoryId || ''} aria-label="Categoria"
                   onChange={(e) => set(g, 'categoryId', e.target.value)} disabled={options.length === 0}>
-                  {options.length === 0 && (
-                    <option value="">Crea prima una categoria di {g.type === 'USCITA' ? 'uscita' : 'entrata'}</option>
-                  )}
+                  <option value="" disabled>
+                    {options.length === 0
+                      ? `Crea prima una categoria di ${g.type === 'USCITA' ? 'uscita' : 'entrata'}`
+                      : 'Scegli la categoria…'}
+                  </option>
                   {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
                 <button type="button" className="btn btn-primary" onClick={() => assign(g)}
-                  disabled={busy || options.length === 0 || keyword.trim().length < 3}>
+                  disabled={busy || !c.categoryId || keyword.trim().length < 3}>
                   <Check size={18} /> Assegna
                 </button>
               </div>
