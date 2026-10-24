@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, Camera, PiggyBank, Menu, X, BarChart3, CalendarClock,
-  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, User
+  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, Landmark, Users, User
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -16,6 +16,8 @@ const MAIN = [
 ];
 
 const MORE = [
+  { to: '/accounts', label: 'Conti', icon: Landmark },
+  { to: '/duo', label: 'Spese in due', icon: Users },
   { to: '/budgets', label: 'Budget', icon: PiggyBank },
   { to: '/analytics', label: 'Analisi', icon: BarChart3 },
   { to: '/recurring', label: 'Ricorrenti', icon: CalendarClock },

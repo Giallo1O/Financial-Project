@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, FileSpreadsheet, FileText } from 'lucide-react';
 import TransactionsForm from '../components/TransactionsForm';
 import TransactionHistory from '../components/TransactionHistory';
-import { fetchTransactions, createTransaction, updateTransaction, deleteTransaction } from '../api';
+import { fetchTransactions, createTransaction, updateTransaction, deleteTransaction, fetchAccounts } from '../api';
 import { exportTransactionsToExcel, exportTransactionsToPdf } from '../utils/exportUtils';
 
 const Transactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [accountNames, setAccountNames] = useState({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -21,6 +22,9 @@ const Transactions = () => {
       }
     };
     loadData();
+    fetchAccounts()
+      .then(({ accounts }) => setAccountNames(Object.fromEntries(accounts.map(a => [a.id, a.name]))))
+      .catch(() => {});
   }, []);
 
   const [editing, setEditing] = useState(null);
@@ -135,6 +139,7 @@ const Transactions = () => {
             loading={loading}
             onDelete={handleDeleteTransaction}
             onEdit={handleEdit}
+            accountNames={accountNames}
           />
         </section>
       </div>

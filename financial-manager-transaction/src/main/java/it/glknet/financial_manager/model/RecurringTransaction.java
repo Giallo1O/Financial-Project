@@ -49,6 +49,10 @@ public class RecurringTransaction {
     @Column(name = "category_id")
     private UUID categoryId;
 
+    /** Conto su cui finisce la transazione quando la ricorrenza viene confermata. */
+    @Column(name = "account_id")
+    private UUID accountId;
+
     @Column(name = "recurrence_interval")
     @Builder.Default
     private String recurrenceInterval = "MONTHLY";

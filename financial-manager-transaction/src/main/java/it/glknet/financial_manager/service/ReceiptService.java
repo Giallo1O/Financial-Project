@@ -67,7 +67,7 @@ public class ReceiptService {
 		boolean created = req.linkTransactionId() == null;
 		if (created) {
 			tx = transactionService.createTransaction(new TransactionRequest("Spesa " + store, req.total(),
-					TransactionType.USCITA, req.categoryId(), userId, req.purchaseDate()));
+					TransactionType.USCITA, req.categoryId(), userId, req.purchaseDate(), req.accountId()));
 		} else {
 			tx = linkable(userId, req.purchaseDate(), req.total(), req.linkTransactionId());
 			// il movimento resta com'e', salvo la categoria se non ne ha una e quella scelta e' dell'utente

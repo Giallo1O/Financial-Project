@@ -17,6 +17,10 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     List<RecurringTransaction> findByUserIdOrderByDayOfMonthAsc(UUID userId);
 
     @Modifying
+    @Query("UPDATE RecurringTransaction r SET r.accountId = null WHERE r.accountId = :accountId")
+    void detachAccount(@Param("accountId") UUID accountId);
+
+    @Modifying
     @Query("UPDATE RecurringTransaction r SET r.categoryId = null WHERE r.categoryId = :categoryId")
     void detachCategory(@Param("categoryId") UUID categoryId);
     List<RecurringTransaction> findByUserIdAndActiveTrueOrderByDayOfMonthAsc(UUID userId);
