@@ -560,3 +560,52 @@ export async function createTransfer(data) {
 export async function deleteTransfer(id) {
   await authenticatedFetch(`${ACC}/transfers/${id}`, { method: 'DELETE' });
 }
+
+// ─── Spese in due (gruppi con codice) ─────────────────────────────────────
+
+const GRP = `${TRANSACTION_API}/api/groups`;
+
+export async function fetchGroups() {
+  return (await authenticatedFetch(GRP)).json();
+}
+
+export async function createGroup(name) {
+  return (await jsonPost(GRP, 'POST', { name })).json();
+}
+
+export async function joinGroup(code) {
+  return (await jsonPost(`${GRP}/join`, 'POST', { code })).json();
+}
+
+export async function createGroupInvite(id) {
+  return (await authenticatedFetch(`${GRP}/${id}/invite`, { method: 'POST' })).json();
+}
+
+export async function revokeGroupInvite(id) {
+  await authenticatedFetch(`${GRP}/${id}/invite`, { method: 'DELETE' });
+}
+
+export async function leaveGroup(id) {
+  await authenticatedFetch(`${GRP}/${id}`, { method: 'DELETE' });
+}
+
+/** { group, balances, debts: [{from,to,amount}], expenses, settlements } */
+export async function fetchGroupSummary(id) {
+  return (await authenticatedFetch(`${GRP}/${id}/summary`)).json();
+}
+
+export async function addGroupExpense(id, expense) {
+  return (await jsonPost(`${GRP}/${id}/expenses`, 'POST', expense)).json();
+}
+
+export async function deleteGroupExpense(id, expenseId) {
+  await authenticatedFetch(`${GRP}/${id}/expenses/${expenseId}`, { method: 'DELETE' });
+}
+
+export async function addGroupSettlement(id, settlement) {
+  return (await jsonPost(`${GRP}/${id}/settlements`, 'POST', settlement)).json();
+}
+
+export async function deleteGroupSettlement(id, settlementId) {
+  await authenticatedFetch(`${GRP}/${id}/settlements/${settlementId}`, { method: 'DELETE' });
+}

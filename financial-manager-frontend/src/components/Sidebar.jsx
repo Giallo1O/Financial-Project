@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet,
-  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock, ShoppingCart, ListChecks, Landmark
+  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock, ShoppingCart, ListChecks, Landmark, Users
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -72,6 +72,11 @@ const Sidebar = () => {
         <NavLink to="/accounts" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <Landmark size={20} />
           <span>Conti</span>
+        </NavLink>
+
+        <NavLink to="/duo" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <Users size={20} />
+          <span>Spese in due</span>
         </NavLink>
 
         <NavLink to="/comparisons" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
