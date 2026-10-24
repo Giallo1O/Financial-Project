@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, FileSpreadsheet, FileText } from 'lucide-react';
 import TransactionsForm from '../components/TransactionsForm';
 import TransactionHistory from '../components/TransactionHistory';
-import { fetchTransactions, createTransaction, deleteTransaction, fetchAccounts } from '../api';
+import { fetchTransactions, createTransaction, updateTransaction, deleteTransaction, fetchAccounts } from '../api';
 import { exportTransactionsToExcel, exportTransactionsToPdf } from '../utils/exportUtils';
 
 const Transactions = () => {
@@ -27,14 +27,23 @@ const Transactions = () => {
       .catch(() => {});
   }, []);
 
-  const handleAddTransaction = async (newTransaction) => {
+  const [editing, setEditing] = useState(null);
+
+  const handleAddTransaction = async (data) => {
     try {
-      const created = await createTransaction(newTransaction);
-      setTransactions((prev) => [created, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+      const saved = editing ? await updateTransaction(editing.id, data) : await createTransaction(data);
+      setTransactions((prev) => [saved, ...prev.filter((tx) => tx.id !== saved.id)]
+        .sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setEditing(null);
     } catch (err) {
-      console.error('Failed to add transaction', err);
-      alert(`Error: ${err.message}`);
+      console.error('Failed to save transaction', err);
+      alert(`Errore: ${err.message}`);
     }
+  };
+
+  const handleEdit = (tx) => {
+    setEditing(tx);
+    document.querySelector('.form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleDeleteTransaction = async (id) => {
@@ -44,7 +53,7 @@ const Transactions = () => {
       setTransactions((prev) => prev.filter((tx) => tx.id !== id));
     } catch (err) {
       console.error('Failed to delete transaction', err);
-      alert(`Error: ${err.message}`);
+      alert(`Errore: ${err.message}`);
     }
   };
 
@@ -121,7 +130,7 @@ const Transactions = () => {
         alignItems: 'start'
       }}>
         <section>
-          <TransactionsForm onAddTransaction={handleAddTransaction} />
+          <TransactionsForm key={editing?.id || 'new'} onAddTransaction={handleAddTransaction} editing={editing} onCancelEdit={() => setEditing(null)} />
         </section>
 
         <section style={{ minWidth: 0 }}>
@@ -129,6 +138,7 @@ const Transactions = () => {
             transactions={transactions}
             loading={loading}
             onDelete={handleDeleteTransaction}
+            onEdit={handleEdit}
             accountNames={accountNames}
           />
         </section>

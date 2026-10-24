@@ -12,6 +12,7 @@ import {
 } from '../api';
 import AccountSelect from '../components/AccountSelect';
 import '../components/Components.css';
+import { eur } from '../utils/format';
 
 const RecurringTransactions = () => {
   const [recurringList, setRecurringList] = useState([]);
@@ -166,7 +167,8 @@ const RecurringTransactions = () => {
     }
     // Days in current month
     for (let d = 1; d <= daysInMonth; d++) {
-      const itemsForDay = recurringList.filter(r => r.active && Number(r.dayOfMonth) === d);
+      // Giorno 29-31 nei mesi piu' corti: cade l'ultimo giorno del mese (come fa il backend)
+      const itemsForDay = recurringList.filter(r => r.active && Math.min(Number(r.dayOfMonth), daysInMonth) === d);
       days.push({ day: d, items: itemsForDay });
     }
     return days;
@@ -218,7 +220,7 @@ const RecurringTransactions = () => {
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Uscite Fisse Mensili</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--danger)', fontSize: '2rem' }}>
-            -€{totalMonthlyExpenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+            {eur(-totalMonthlyExpenses)}
           </h2>
           <span className="text-muted text-sm">{recurringList.filter(r => r.type === 'USCITA').length} abbonamenti o spese fisse</span>
         </div>
@@ -226,7 +228,7 @@ const RecurringTransactions = () => {
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Entrate Fisse Mensili</span>
           <h2 style={{ margin: '0.5rem 0', color: 'var(--success)', fontSize: '2rem' }}>
-            +€{totalMonthlyIncomes.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+            +{eur(totalMonthlyIncomes)}
           </h2>
           <span className="text-muted text-sm">Stipendi o entrate periodiche</span>
         </div>
@@ -234,7 +236,7 @@ const RecurringTransactions = () => {
         <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
           <span className="text-muted text-xs uppercase" style={{ letterSpacing: '0.05em' }}>Saldo Ricorrente Netto</span>
           <h2 style={{ margin: '0.5rem 0', color: totalMonthlyIncomes >= totalMonthlyExpenses ? 'var(--success)' : 'var(--danger)', fontSize: '2rem' }}>
-            €{(totalMonthlyIncomes - totalMonthlyExpenses).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+            {eur((totalMonthlyIncomes - totalMonthlyExpenses))}
           </h2>
           <span className="text-muted text-sm">Impatto mensile a regime</span>
         </div>
@@ -438,7 +440,7 @@ const RecurringTransactions = () => {
                         fontWeight: 700,
                         color: isExpense ? 'var(--danger)' : 'var(--success)'
                       }}>
-                        {isExpense ? '-' : '+'}€{Number(item.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        {isExpense ? '-' : '+'}{eur(Number(item.amount))}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: item.autoConfirm ? '#34d399' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
                         {item.autoConfirm ? <Zap size={12} /> : <Clock size={12} />}

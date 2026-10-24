@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { eur } from '../utils/format';
 
 const DailyCategoryChart = ({ transactions, currentDate, viewType }) => {
 
@@ -113,7 +114,7 @@ const DailyCategoryChart = ({ transactions, currentDate, viewType }) => {
                   color: 'white',
                   boxShadow: 'var(--shadow-glass)'
                 }}
-                formatter={(value, name) => [`€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, name]}
+                formatter={(value, name) => [`${eur(value)}`, name]}
                 labelFormatter={(label) => `Giorno ${label}`}
               />
               <Legend verticalAlign="top" height={36} />

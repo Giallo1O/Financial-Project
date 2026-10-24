@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
 import './Components.css'; // Shared component styling
+import { eur } from '../utils/format';
 
 const AccountSummary = ({ transactions }) => {
   // Simple aggregation for UI
@@ -17,8 +18,8 @@ const AccountSummary = ({ transactions }) => {
   const balance = incomes - expenses;
 
   const data = [
-    { name: 'Income', value: incomes, color: 'var(--success)' },
-    { name: 'Expenses', value: expenses, color: 'var(--danger)' }
+    { name: 'Entrate', value: incomes, color: 'var(--success)' },
+    { name: 'Uscite', value: expenses, color: 'var(--danger)' }
   ];
 
   return (
@@ -26,11 +27,11 @@ const AccountSummary = ({ transactions }) => {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
         <div style={{ flex: '1 1 300px' }}>
           <div className="summary-header">
-            <h3 className="section-title">Current Balance</h3>
+            <h3 className="section-title">Saldo del mese</h3>
             <div className="balance-display">
               <Wallet size={32} className="balance-icon" />
               <h2 className={balance >= 0 ? 'text-success' : 'text-danger'}>
-                €{balance.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                {eur(balance)}
               </h2>
             </div>
           </div>
@@ -42,7 +43,7 @@ const AccountSummary = ({ transactions }) => {
               </div>
               <div>
                 <p className="text-muted text-sm">Entrate Mensili</p>
-                <h4>€{incomes.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</h4>
+                <h4>{eur(incomes)}</h4>
               </div>
             </div>
     
@@ -52,7 +53,7 @@ const AccountSummary = ({ transactions }) => {
               </div>
               <div>
                 <p className="text-muted text-sm">Uscite Mensili</p>
-                <h4>€{expenses.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</h4>
+                <h4>{eur(expenses)}</h4>
               </div>
             </div>
           </div>
@@ -60,7 +61,7 @@ const AccountSummary = ({ transactions }) => {
 
         {transactions.length > 0 && (
           <div className="chart-container" style={{ flex: '1 1 400px', marginTop: 0 }}>
-            <h4 className="chart-title">Cash Flow Overview</h4>
+            <h4 className="chart-title">Entrate e uscite</h4>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie

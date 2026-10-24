@@ -29,7 +29,7 @@ const Login = () => {
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred. Please try again.');
+      setError(err.message || 'Si è verificato un errore. Riprova.');
     } finally {
       setIsLoading(false);
     }
@@ -42,11 +42,11 @@ const Login = () => {
           <div className="logo-container">
             <Wallet size={48} className="logo-icon" />
           </div>
-          <h2>{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+          <h2>{mode === 'login' ? 'Bentornato' : 'Crea un account'}</h2>
           <p className="text-muted">
             {mode === 'login'
-              ? 'Enter your credentials to access your portfolio'
-              : 'Register to start managing your finances'}
+              ? 'Inserisci le credenziali per accedere'
+              : 'Registrati per iniziare a gestire le tue finanze'}
           </p>
         </div>
 
@@ -63,7 +63,7 @@ const Login = () => {
               <User size={18} className="input-icon" />
               <input
                 type="text"
-                placeholder="your_username"
+                placeholder="il_tuo_username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -92,9 +92,9 @@ const Login = () => {
             className="btn btn-primary login-button"
             disabled={isLoading}
           >
-            {isLoading ? 'Please wait...' : (
+            {isLoading ? 'Attendi...' : (
               <>
-                <span>{mode === 'login' ? 'Sign In' : 'Register'}</span>
+                <span>{mode === 'login' ? 'Accedi' : 'Registrati'}</span>
                 {mode === 'login' ? <LogIn size={20} /> : <UserPlus size={20} />}
               </>
             )}
@@ -104,16 +104,16 @@ const Login = () => {
         <div className="login-switch">
           {mode === 'login' ? (
             <p className="text-muted">
-              No account?{' '}
+              Non hai un account?{' '}
               <button className="link-btn" onClick={() => { setMode('register'); setError(''); }}>
-                Register here
+                Registrati
               </button>
             </p>
           ) : (
             <p className="text-muted">
-              Already registered?{' '}
+              Hai già un account?{' '}
               <button className="link-btn" onClick={() => { setMode('login'); setError(''); }}>
-                Sign in
+                Accedi
               </button>
             </p>
           )}

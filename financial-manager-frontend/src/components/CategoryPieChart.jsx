@@ -8,6 +8,7 @@ import {
   Legend,
 } from 'recharts';
 import { Tag } from 'lucide-react';
+import { eur } from '../utils/format';
 
 // Palette di colori vivaci per le categorie
 const COLORS = [
@@ -24,7 +25,7 @@ const COLORS = [
 ];
 
 const formatCurrency = (value) =>
-  `€${Number(value).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`;
+  `${eur(Number(value))}`;
 
 // Etichetta custom sulla fetta
 const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
@@ -154,7 +155,7 @@ const CategoryPieChart = ({
                 {data.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
+                    fill={entry.color || COLORS[index % COLORS.length]}
                   />
                 ))}
               </Pie>

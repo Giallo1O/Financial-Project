@@ -367,3 +367,43 @@
 .react-datepicker__triangle {
   display: none !important;
 }
+
+/* Lista movimenti: tabella se c'e' spazio, schede quando il riquadro e' stretto (telefono o colonna su tablet) */
+.history-wrap {
+  container-type: inline-size;
+  overflow-x: auto;
+}
+
+.edit-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-glass);
+  color: var(--text-secondary);
+  margin-right: 0.4rem;
+}
+
+.edit-btn:hover {
+  background: var(--accent-gradient);
+  color: white;
+}
+
+@container (max-width: 560px) {
+  .history-table thead { display: none; }
+  .history-table, .history-table tbody { display: block; }
+  .history-table tr.history-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "desc desc amount"
+      "date cat actions";
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    padding: 0.85rem 0.25rem;
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .history-table td { padding: 0 !important; text-align: left !important; }
+  .history-table .h-desc { grid-area: desc; min-width: 0; overflow-wrap: anywhere; }
+  .history-table .h-amount { grid-area: amount; text-align: right !important; }
+  .history-table .h-date { grid-area: date; font-size: 0.85rem; color: var(--text-muted); }
+  .history-table .h-cat { grid-area: cat; min-width: 0; }
+  .history-table .h-actions { grid-area: actions; }
+}

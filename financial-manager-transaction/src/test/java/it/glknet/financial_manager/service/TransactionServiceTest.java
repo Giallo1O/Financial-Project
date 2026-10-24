@@ -52,6 +52,8 @@ class TransactionServiceTest {
 		for (TransactionRequest bad : List.of(
 				new TransactionRequest("x", null, ok.type(), null, user, day),
 				new TransactionRequest("x", new BigDecimal("-1"), ok.type(), null, user, day),
+				new TransactionRequest("x", BigDecimal.ZERO, ok.type(), null, user, day),
+				new TransactionRequest("x", new BigDecimal("99999999999999"), ok.type(), null, user, day),
 				new TransactionRequest("x", ok.amount(), null, null, user, day),
 				new TransactionRequest("x", ok.amount(), ok.type(), null, user, null))) {
 			assertThrows(org.springframework.web.server.ResponseStatusException.class,
@@ -110,5 +112,12 @@ class TransactionServiceTest {
 						bankRow("2026-10-19", "5.00", TransactionType.USCITA))); // scontrino gia' collegato alla banca
 
 		assertEquals(java.util.Arrays.asList(null, null, null, null), notes);
+	}
+
+	@Test
+	void sameDateAndAmountWithDifferentDescriptionIsFlaggedOnce() {
+		existing(1); // "caffe" a mano; in banca "BAR CENTRALE" stesso giorno e importo, due volte
+		var notes = service.findDuplicates(user, List.of(coffee("BAR CENTRALE"), coffee("BAR CENTRALE")));
+		assertEquals(java.util.Arrays.asList("Stessa data e importo di \"caffe\"", null), notes);
 	}
 }

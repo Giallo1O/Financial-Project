@@ -14,13 +14,13 @@ import {
   fetchCategories, scanReceipt, saveReceipt, fetchReceipts, fetchReceipt, deleteReceipt,
   fetchProducts, fetchProductHistory, fetchFoodSpending, fetchReceiptMatches
 } from '../api';
+import { eur } from '../utils/format';
 
 const FOOD_CATEGORIES = [
   'Frutta e verdura', 'Carne e pesce', 'Latticini e uova', 'Pane e cereali', 'Dispensa',
   'Bevande', 'Dolci e snack', 'Surgelati', 'Casa e igiene', 'Altro'
 ];
 
-const eur = (n) => Number(n || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const day = (iso) => new Date(iso).toLocaleDateString('it-IT');
 const num = (v) => (v === '' || v == null ? 0 : Number(String(v).replace(',', '.')) || 0);
 

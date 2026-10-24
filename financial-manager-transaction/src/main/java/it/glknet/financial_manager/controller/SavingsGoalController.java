@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -85,10 +86,8 @@ public class SavingsGoalController {
     @PostMapping("/{id}/deposit")
     public ResponseEntity<SavingsGoal> deposit(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
             @PathVariable UUID id, @RequestBody AmountOperationRequest req) {
+        BigDecimal depositAmt = positive(req);
         return owned(userId, id).map(goal -> {
-            BigDecimal depositAmt = (req.getAmount() != null && req.getAmount().compareTo(BigDecimal.ZERO) > 0)
-                    ? req.getAmount()
-                    : BigDecimal.ZERO;
             BigDecimal newAmount = goal.getCurrentAmount().add(depositAmt);
             goal.setCurrentAmount(newAmount);
             if (goal.getTargetAmount() != null && newAmount.compareTo(goal.getTargetAmount()) >= 0) {
@@ -101,13 +100,12 @@ public class SavingsGoalController {
     @PostMapping("/{id}/withdraw")
     public ResponseEntity<SavingsGoal> withdraw(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
             @PathVariable UUID id, @RequestBody AmountOperationRequest req) {
+        BigDecimal withdrawAmt = positive(req);
         return owned(userId, id).map(goal -> {
-            BigDecimal withdrawAmt = (req.getAmount() != null && req.getAmount().compareTo(BigDecimal.ZERO) > 0)
-                    ? req.getAmount()
-                    : BigDecimal.ZERO;
             BigDecimal newAmount = goal.getCurrentAmount().subtract(withdrawAmt);
-            if (newAmount.compareTo(BigDecimal.ZERO) < 0) {
-                newAmount = BigDecimal.ZERO;
+            if (newAmount.signum() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Non puoi prelevare piu' di quanto c'e' nel salvadanaio (" + goal.getCurrentAmount() + " €)");
             }
             goal.setCurrentAmount(newAmount);
             if (goal.getTargetAmount() != null && newAmount.compareTo(goal.getTargetAmount()) < 0) {
@@ -115,5 +113,12 @@ public class SavingsGoalController {
             }
             return ResponseEntity.ok(savingsGoalRepository.save(goal));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private static BigDecimal positive(AmountOperationRequest req) {
+        if (req.getAmount() == null || req.getAmount().signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "L'importo deve essere maggiore di zero");
+        }
+        return req.getAmount();
     }
 }

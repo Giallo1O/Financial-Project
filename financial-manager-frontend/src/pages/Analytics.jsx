@@ -5,6 +5,7 @@ import {
 import { ChevronLeft, ChevronRight, BarChart3, Filter, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { fetchTransactions } from '../api';
 import DailyCategoryChart from '../components/DailyCategoryChart';
+import { eur } from '../utils/format';
 
 const Analytics = () => {
   const [transactions, setTransactions] = useState([]);
@@ -296,7 +297,7 @@ const Analytics = () => {
                               color: 'white',
                               boxShadow: 'var(--shadow-glass)'
                             }}
-                            formatter={(value) => [`€${value.toLocaleString('it-IT', { minimumFractionDigits: 2 })}`, undefined]}
+                            formatter={(value) => [`${eur(value)}`, undefined]}
                           />
                           <Legend verticalAlign="top" height={36} />
                           {showIncome && <Bar dataKey="income" name="Entrate" fill="var(--success)" radius={[4, 4, 0, 0]} barSize={32} />}

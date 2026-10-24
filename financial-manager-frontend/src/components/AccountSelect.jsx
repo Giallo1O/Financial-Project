@@ -3,8 +3,8 @@ import { fetchAccounts } from '../api';
 
 const KEY = 'lastAccountId';
 
-/** Menu dei conti; ricorda l'ultimo scelto. Se non hai ancora creato conti non mostra nulla. */
-const AccountSelect = ({ value, onChange, label = 'Conto', className = 'form-input' }) => {
+/** Menu dei conti; ricorda l'ultimo scelto (useLast=false: non lo propone, per le modifiche). Se non hai ancora creato conti non mostra nulla. */
+const AccountSelect = ({ value, onChange, label = 'Conto', className = 'form-input', useLast = true }) => {
   const [accounts, setAccounts] = useState([]);
 
   useEffect(() => {
@@ -13,7 +13,7 @@ const AccountSelect = ({ value, onChange, label = 'Conto', className = 'form-inp
       setAccounts(open);
       let last = null;
       try { last = localStorage.getItem(KEY); } catch { /* storage non disponibile */ }
-      if (!value && last && open.some(a => a.id === last)) onChange(last);
+      if (useLast && !value && last && open.some(a => a.id === last)) onChange(last);
     }).catch(() => {});
     // solo al primo caricamento: la scelta ricordata va applicata una volta
     // eslint-disable-next-line react-hooks/exhaustive-deps
