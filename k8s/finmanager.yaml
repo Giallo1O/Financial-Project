@@ -172,6 +172,21 @@ spec:
                   name: finmanager-anthropic
                   key: api-key
                   optional: true
+            # Lista della spesa di Home Assistant (facoltativa): Secret finmanager-ha con url e token. Senza, la lista non compare.
+            - name: HA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: finmanager-ha
+                  key: url
+                  optional: true
+            - name: HA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: finmanager-ha
+                  key: token
+                  optional: true
+            - name: HA_SHOPPING_ENTITY
+              value: todo.lista_della_spesa
             - name: SPRING_DATASOURCE_USERNAME
               value: user
             - name: SPRING_DATASOURCE_PASSWORD

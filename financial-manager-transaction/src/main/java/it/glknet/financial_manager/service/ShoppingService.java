@@ -56,6 +56,11 @@ public class ShoppingService {
 	private final ShoppingItemRepository items;
 	private final ReceiptItemRepository receiptItems;
 	private final ReceiptService receiptService;
+	private final HomeAssistantTodo homeAssistant;
+
+	/** ID fisso della lista di casa in Home Assistant (non e' nel database). */
+	public static final UUID HA_LIST_ID = UUID.nameUUIDFromBytes("home-assistant-shopping-list".getBytes());
+	static final String HA_LIST_NAME = "Casa (Home Assistant)";
 
 	// ---------------------------------------------------------------- liste
 
@@ -66,7 +71,12 @@ public class ShoppingService {
 		lists.findAllById(joined).stream()
 				.sorted(Comparator.comparing(ShoppingList::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
 				.forEach(l -> mine.putIfAbsent(l.getId(), l));
-		return mine.values().stream().map(l -> view(l, userId)).toList();
+		List<ShoppingListView> result = new ArrayList<>();
+		if (homeAssistant.enabled()) {
+			result.add(haView());
+		}
+		mine.values().stream().map(l -> view(l, userId)).forEach(result::add);
+		return result;
 	}
 
 	@Transactional
@@ -131,6 +141,12 @@ public class ShoppingService {
 	// ---------------------------------------------------------------- voci
 
 	public List<ShoppingItemView> items(UUID userId, UUID listId) {
+		if (HA_LIST_ID.equals(listId)) {
+			Map<String, ProductSummary> known = knownProducts(userId);
+			List<HomeAssistantTodo.Item> all = homeAssistant.items();
+			return java.util.stream.Stream.concat(all.stream().filter(i -> !i.completed()),
+					all.stream().filter(HomeAssistantTodo.Item::completed)).map(i -> haItemView(i, known)).toList();
+		}
 		accessible(userId, listId);
 		Map<String, ProductSummary> known = knownProducts(userId);
 		return items.findByListId(listId).stream()
@@ -145,7 +161,9 @@ public class ShoppingService {
 	@Transactional
 	public ShoppingItemView addItem(UUID userId, String username, UUID listId, String name, BigDecimal quantity,
 			String unit) {
-		accessible(userId, listId);
+		if (!HA_LIST_ID.equals(listId)) {
+			accessible(userId, listId);
+		}
 		String clean = name == null ? "" : name.trim();
 		if (clean.isEmpty() || clean.length() > 80) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Serve un nome (massimo 80 caratteri)");
@@ -156,6 +174,9 @@ public class ShoppingService {
 		}
 		String u = cleanUnit(unit);
 		String key = TextKeywords.normalize(clean);
+		if (HA_LIST_ID.equals(listId)) {
+			return haAdd(userId, clean, qty, u, key);
+		}
 		ShoppingItem item = items.findByListId(listId).stream()
 				.filter(i -> !i.isChecked() && TextKeywords.normalize(i.getName()).equals(key) && i.getUnit().equals(u))
 				.findFirst().orElse(null);
@@ -170,6 +191,17 @@ public class ShoppingService {
 	/** Cambia lo stato "preso" e/o la quantita' (i campi null non cambiano). */
 	@Transactional
 	public ShoppingItemView update(UUID userId, UUID listId, UUID itemId, Boolean checked, BigDecimal quantity) {
+		if (quantity != null && quantity.signum() <= 0) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La quantita' deve essere positiva");
+		}
+		if (HA_LIST_ID.equals(listId)) {
+			HomeAssistantTodo.Item ha = haItem(itemId);
+			HomeAssistantTodo.Text t = HomeAssistantTodo.Text.parse(ha.summary());
+			String rename = quantity == null ? null : new HomeAssistantTodo.Text(t.name(), quantity, t.unit()).format();
+			homeAssistant.update(ha.uid(), rename, checked);
+			return haItemView(new HomeAssistantTodo.Item(ha.uid(), rename == null ? ha.summary() : rename,
+					checked == null ? ha.completed() : checked), knownProducts(userId));
+		}
 		accessible(userId, listId);
 		ShoppingItem item = item(listId, itemId);
 		if (checked != null && checked != item.isChecked()) {
@@ -187,12 +219,20 @@ public class ShoppingService {
 
 	@Transactional
 	public void deleteItem(UUID userId, UUID listId, UUID itemId) {
+		if (HA_LIST_ID.equals(listId)) {
+			homeAssistant.remove(haItem(itemId).uid());
+			return;
+		}
 		accessible(userId, listId);
 		items.delete(item(listId, itemId));
 	}
 
 	@Transactional
 	public void clearChecked(UUID userId, UUID listId) {
+		if (HA_LIST_ID.equals(listId)) {
+			homeAssistant.removeCompleted();
+			return;
+		}
 		accessible(userId, listId);
 		items.deleteByListIdAndCheckedTrue(listId);
 	}
@@ -263,7 +303,8 @@ public class ShoppingService {
 		members.findByListId(l.getId()).forEach(m -> people.add(m.getUsername() == null ? "?" : m.getUsername()));
 		List<ShoppingItem> all = items.findByListId(l.getId());
 		return new ShoppingListView(l.getId(), l.getName(), l.getOwnerName(), mine, people,
-				mine ? l.getInviteCode() : null, (int) all.stream().filter(i -> !i.isChecked()).count(), all.size());
+				mine ? l.getInviteCode() : null, (int) all.stream().filter(i -> !i.isChecked()).count(), all.size(),
+				false);
 	}
 
 	private ShoppingItemView itemView(ShoppingItem i, Map<String, ProductSummary> known) {
@@ -273,6 +314,64 @@ public class ShoppingService {
 				? new PriceHint(p.lastUnitPrice(), p.minUnitPrice(), p.cheapestStore(), p.lastStore()) : null;
 		return new ShoppingItemView(i.getId(), i.getName(), i.getQuantity(), i.getUnit(), i.isChecked(),
 				i.getAddedBy(), hint);
+	}
+
+	// ---------------------------------------------------------------- lista di casa (Home Assistant)
+
+	/** Se HA non risponde la lista compare lo stesso (vuota): aprendola si vede il motivo. */
+	private ShoppingListView haView() {
+		int open = 0;
+		int total = 0;
+		try {
+			List<HomeAssistantTodo.Item> all = homeAssistant.items();
+			open = (int) all.stream().filter(i -> !i.completed()).count();
+			total = all.size();
+		} catch (ResponseStatusException e) {
+			// HA spento o irraggiungibile
+		}
+		return new ShoppingListView(HA_LIST_ID, HA_LIST_NAME, "Home Assistant", false, List.of("tutta la casa"), null,
+				open, total, true);
+	}
+
+	/** Come per le altre liste: se la voce c'e' gia' da comprare (stesso nome e unita') ne aumenta la quantita'. */
+	private ShoppingItemView haAdd(UUID userId, String name, BigDecimal qty, String unit, String key) {
+		HomeAssistantTodo.Item same = homeAssistant.items().stream().filter(i -> !i.completed()).filter(i -> {
+			HomeAssistantTodo.Text t = HomeAssistantTodo.Text.parse(i.summary());
+			return TextKeywords.normalize(t.name()).equals(key) && t.unit().equals(unit);
+		}).findFirst().orElse(null);
+		String summary;
+		if (same != null) {
+			HomeAssistantTodo.Text t = HomeAssistantTodo.Text.parse(same.summary());
+			summary = new HomeAssistantTodo.Text(t.name(), t.quantity().add(qty), unit).format();
+			homeAssistant.update(same.uid(), summary, null);
+			return haItemView(new HomeAssistantTodo.Item(same.uid(), summary, false), knownProducts(userId));
+		}
+		summary = new HomeAssistantTodo.Text(name, qty, unit).format();
+		homeAssistant.add(summary);
+		// HA non restituisce l'uid della voce creata: la ritrovo per testo
+		HomeAssistantTodo.Item created = homeAssistant.items().stream()
+				.filter(i -> !i.completed() && i.summary().equals(summary)).reduce((a, b) -> b)
+				.orElse(new HomeAssistantTodo.Item(summary, summary, false));
+		return haItemView(created, knownProducts(userId));
+	}
+
+	private HomeAssistantTodo.Item haItem(UUID itemId) {
+		return homeAssistant.items().stream().filter(i -> haId(i.uid()).equals(itemId)).findFirst()
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+						"Voce non trovata: forse e' stata tolta da Home Assistant"));
+	}
+
+	/** Gli uid di HA non sono sempre UUID: ne ricavo uno stabile per l'app. */
+	static UUID haId(String uid) {
+		return UUID.nameUUIDFromBytes(("ha:" + uid).getBytes());
+	}
+
+	private ShoppingItemView haItemView(HomeAssistantTodo.Item i, Map<String, ProductSummary> known) {
+		HomeAssistantTodo.Text t = HomeAssistantTodo.Text.parse(i.summary());
+		ProductSummary p = known.get(TextKeywords.normalize(t.name()));
+		PriceHint hint = p != null && Objects.equals(p.unit(), t.unit())
+				? new PriceHint(p.lastUnitPrice(), p.minUnitPrice(), p.cheapestStore(), p.lastStore()) : null;
+		return new ShoppingItemView(haId(i.uid()), t.name(), t.quantity(), t.unit(), i.completed(), null, hint);
 	}
 
 	/** Prodotti dai tuoi scontrini per nome normalizzato; con piu' unita' si tiene quella piu' comprata. */

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  ListChecks, Plus, Minus, Trash2, Check, Users, Copy, X, RefreshCw, LogIn, Share2
+  ListChecks, Plus, Minus, Trash2, Check, Users, Copy, X, RefreshCw, LogIn, Share2, Home
 } from 'lucide-react';
 import {
   fetchShoppingLists, createShoppingList, deleteOrLeaveShoppingList, createShoppingInvite, revokeShoppingInvite,
@@ -19,6 +19,7 @@ const Shopping = () => {
   const [lists, setLists] = useState([]);
   const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(ACTIVE_KEY) || ''; } catch { return ''; } });
   const [items, setItems] = useState([]);
+  const [haError, setHaError] = useState(''); // lista di casa: Home Assistant non risponde
   const [suggestions, setSuggestions] = useState([]);
   const [newName, setNewName] = useState('');
   const [message, setMessage] = useState(null);
@@ -47,7 +48,9 @@ const Shopping = () => {
 
   const reloadItems = useCallback(async () => {
     if (!activeKey) return;
-    try { setItems(await fetchShoppingItems(activeKey)); } catch { /* si riprova al prossimo giro */ }
+    try { setItems(await fetchShoppingItems(activeKey)); setHaError(''); } catch (err) {
+      if (err.status === 502) setHaError(err.message); // altrimenti si riprova al prossimo giro
+    }
   }, [activeKey]);
 
   // caricamento all'apertura della pagina
@@ -175,7 +178,7 @@ const Shopping = () => {
       <div className="shop-lists">
         {lists.map(l => (
           <button key={l.id} className={`btn ${active?.id === l.id ? 'btn-primary' : 'btn-glass'}`} onClick={() => pick(l.id)}>
-            {l.name}{!l.mine && <span className="text-sm"> · di {l.ownerName}</span>} {l.openItems > 0 && <span className="shop-badge">{l.openItems}</span>}
+            {l.homeAssistant && <Home size={14} />}{l.name}{!l.mine && !l.homeAssistant && <span className="text-sm"> · di {l.ownerName}</span>} {l.openItems > 0 && <span className="shop-badge">{l.openItems}</span>}
             {l.members.length > 1 && <Users size={14} />}
           </button>
         ))}
@@ -264,6 +267,17 @@ const Shopping = () => {
             </section>
           )}
 
+          {active.homeAssistant ? (
+            <section className="glass-panel shop-share">
+              <div className="shop-share-head">
+                <span><Home size={16} /> Lista della spesa di Home Assistant</span>
+              </div>
+              <p className="text-muted text-sm" style={{ marginTop: '0.6rem' }}>
+                È la stessa lista dell'app di Home Assistant e dell'assistente vocale («aggiungi il latte alla spesa»): ciò che cambi qui si vede subito anche lì, e viceversa.
+              </p>
+              {haError && <p className="text-sm shop-danger" role="alert" style={{ marginTop: '0.4rem' }}>{haError}</p>}
+            </section>
+          ) : (
           <section className="glass-panel shop-share">
             <div className="shop-share-head">
               <span><Users size={16} /> {active.members.join(', ')}</span>
@@ -293,6 +307,7 @@ const Shopping = () => {
               </div>
             )}
           </section>
+          )}
         </>
       )}
     </div>

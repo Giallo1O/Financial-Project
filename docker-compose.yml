@@ -47,6 +47,9 @@ services:
       # Lettura scontrini con Claude: imposta ANTHROPIC_API_KEY in .env
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-opus-5-5}
+      # Lista della spesa di Home Assistant (facoltativa), vedi README
+      - HA_URL=${HA_URL:-}
+      - HA_TOKEN=${HA_TOKEN:-}
     depends_on:
       postgres-transactions:
         condition: service_healthy

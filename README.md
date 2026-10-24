@@ -68,6 +68,15 @@ Un database PostgreSQL per servizio. Nessun broker di messaggi.
 
 Il modello è `claude-opus-5-5` per default (`ANTHROPIC_MODEL` per cambiarlo, es. `claude-sonnet-5-5` o `claude-haiku-5-5` per costare meno: conviene confrontarli su scontrini reali). Il costo per scontrino non è ancora stato misurato su scontrini veri.
 
+## Lista della spesa di Home Assistant
+
+Se imposti `HA_URL` e `HA_TOKEN`, nella pagina **Lista spesa** compare per prima la lista **"Casa (Home Assistant)"**: è la Shopping list di HA (`todo.lista_della_spesa`, cambiabile con `HA_SHOPPING_ENTITY`), letta e modificata in diretta con i servizi `todo.*` di HA, senza copie. Quello che aggiungi, spunti o togli da FinManager si vede nell'app di HA e negli assistenti vocali, e viceversa.
+
+- La quantità sta nel testo della voce: "Latte (2 l)". Le voci senza parentesi (es. dette a voce) valgono 1 pz.
+- Prezzi e "dove costa meno" funzionano come nelle altre liste; niente codici di invito (la lista di HA è già di tutta la casa).
+- Il token è di un utente HA dedicato (Impostazioni → Persone → aggiungi persona `finmanager`, poi dal suo profilo → Sicurezza → Token di accesso a lunga durata). Su Kubernetes va nel Secret `finmanager-ha` (chiavi `url` e `token`).
+- Se HA non risponde, la lista resta visibile con un avviso; le altre liste funzionano normalmente.
+
 ## Avvio in locale (Docker Compose)
 
 ```bash
