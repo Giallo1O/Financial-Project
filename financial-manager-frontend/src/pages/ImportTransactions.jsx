@@ -12,6 +12,7 @@ import {
   List
 } from 'lucide-react';
 import { fetchCategories, parseCsv, bulkImportTransactions } from '../api';
+import AccountSelect from '../components/AccountSelect';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parseISO } from 'date-fns';
@@ -33,6 +34,7 @@ const ImportTransactions = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [accountId, setAccountId] = useState('');
   const [learn, setLearn] = useState(true); // ricorda le categorie scelte per i prossimi import
   
   const fileInputRef = useRef(null);
@@ -134,7 +136,7 @@ const ImportTransactions = () => {
         type: rest.type.toUpperCase()
       }));
       
-      const res = await bulkImportTransactions(payload, learn);
+      const res = await bulkImportTransactions(payload, learn, accountId);
 
       if (res.ok) {
         const { imported, skipped } = await res.json();
@@ -368,6 +370,10 @@ const ImportTransactions = () => {
                 </span>
                 <span className="stat-label">Expenses</span>
               </div>
+            </div>
+
+            <div style={{ maxWidth: 320, margin: '1rem auto' }}>
+              <AccountSelect value={accountId} onChange={setAccountId} label="Su quale conto sono questi movimenti?" />
             </div>
 
             <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', margin: '1rem 0', cursor: 'pointer' }}>

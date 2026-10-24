@@ -20,6 +20,7 @@ import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Receipt;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.model.TransactionType;
+import it.glknet.financial_manager.repository.AccountRepository;
 import it.glknet.financial_manager.repository.CategoryRepository;
 import it.glknet.financial_manager.repository.ReceiptRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
@@ -29,7 +30,7 @@ class TransactionServiceTest {
 	private final TransactionRepository repo = mock(TransactionRepository.class);
 	private final ReceiptRepository receiptRepo = mock(ReceiptRepository.class);
 	private final TransactionService service = new TransactionService(repo, mock(CategoryRepository.class),
-			receiptRepo);
+			mock(AccountRepository.class), receiptRepo);
 	private final UUID user = UUID.randomUUID();
 	private final LocalDate day = LocalDate.of(2026, 3, 11);
 

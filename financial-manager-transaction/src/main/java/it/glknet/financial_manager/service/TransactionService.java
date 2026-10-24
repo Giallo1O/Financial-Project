@@ -21,6 +21,7 @@ import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.model.Receipt;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.model.TransactionType;
+import it.glknet.financial_manager.repository.AccountRepository;
 import it.glknet.financial_manager.repository.CategoryRepository;
 import it.glknet.financial_manager.repository.ReceiptRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
@@ -33,6 +34,8 @@ public class TransactionService {
 	private final TransactionRepository repository;
 
 	private final CategoryRepository categoryRepository;
+
+	private final AccountRepository accountRepository;
 
 	private final ReceiptRepository receiptRepository;
 
@@ -51,8 +54,13 @@ public class TransactionService {
 			}
 		}
 
+		if (request.accountId() != null && !accountRepository.findById(request.accountId())
+				.filter(a -> a.getUserId().equals(request.userId())).isPresent()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Il conto scelto non esiste");
+		}
+
 		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
-				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
+				.type(request.type()).categoryId(request.categoryId()).accountId(request.accountId()).userId(request.userId())
 				.transactionDate(request.transactionDate()).build();
 
 		return repository.save(transaction);

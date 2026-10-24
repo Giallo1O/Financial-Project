@@ -88,8 +88,11 @@ public class TransactionController {
 	@PostMapping("/bulk-import")
 	public ResponseEntity<ImportResult> bulkImport(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestBody List<TransactionRequest> requests,
-			@RequestParam(defaultValue = "false") boolean learn) {
-		List<TransactionRequest> rows = requests.stream().map(r -> withUser(r, userId)).toList();
+			@RequestParam(defaultValue = "false") boolean learn,
+			@RequestParam(required = false) UUID accountId) {
+		// accountId: il conto su cui registrare le righe dell'estratto conto (se la riga non ne ha gia' uno)
+		List<TransactionRequest> rows = requests.stream().map(r -> withUser(r, userId))
+				.map(r -> r.accountId() == null && accountId != null ? withAccount(r, accountId) : r).toList();
 		ImportResult result = service.importAll(userId, rows);
 		if (learn) {
 			ruleService.learn(userId, rows); // ricorda le categorie scelte per i prossimi import
@@ -97,9 +100,14 @@ public class TransactionController {
 		return ResponseEntity.ok(result);
 	}
 
+	private static TransactionRequest withAccount(TransactionRequest r, UUID accountId) {
+		return new TransactionRequest(r.description(), r.amount(), r.type(), r.categoryId(), r.userId(),
+				r.transactionDate(), accountId);
+	}
+
 	private static TransactionRequest withUser(TransactionRequest r, UUID userId) {
 		return new TransactionRequest(r.description(), r.amount(), r.type(), r.categoryId(), userId,
-				r.transactionDate());
+				r.transactionDate(), r.accountId());
 	}
 
 }

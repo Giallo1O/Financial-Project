@@ -10,6 +10,7 @@ import {
   confirmRecurringTransaction, processAutoRecurringTransactions,
   fetchCategories
 } from '../api';
+import AccountSelect from '../components/AccountSelect';
 import '../components/Components.css';
 
 const RecurringTransactions = () => {
@@ -27,6 +28,7 @@ const RecurringTransactions = () => {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState('USCITA');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('1');
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [recurrenceInterval, setRecurrenceInterval] = useState('MONTHLY');
@@ -59,6 +61,7 @@ const RecurringTransactions = () => {
     setEditingItem(null);
     setDescription('');
     setAmount('');
+    setAccountId('');
     setType('USCITA');
     setCategoryId(categories.length > 0 ? categories[0].id : '');
     setDayOfMonth('1');
@@ -73,6 +76,7 @@ const RecurringTransactions = () => {
     setAmount(item.amount);
     setType(item.type);
     setCategoryId(item.categoryId || (categories.length > 0 ? categories[0].id : ''));
+    setAccountId(item.accountId || '');
     setDayOfMonth(item.dayOfMonth ? String(item.dayOfMonth) : '1');
     setAutoConfirm(Boolean(item.autoConfirm));
     setRecurrenceInterval(item.recurrenceInterval || 'MONTHLY');
@@ -89,6 +93,7 @@ const RecurringTransactions = () => {
         amount: Number(amount),
         type,
         categoryId: categoryId || null,
+        accountId: accountId || null,
         dayOfMonth: Number(dayOfMonth) || 1,
         autoConfirm,
         recurrenceInterval
@@ -555,6 +560,10 @@ const RecurringTransactions = () => {
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <AccountSelect value={accountId} onChange={setAccountId} className="input-month" />
                 </div>
 
                 <div className="form-group">

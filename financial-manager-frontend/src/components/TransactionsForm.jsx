@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MinusCircle, Tag, Calendar, FileText, Euro } from 'lucide-react';
 import { fetchCategories } from '../api';
+import AccountSelect from './AccountSelect';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
@@ -15,6 +16,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
   const [categoryId, setCategoryId] = useState('');
   const [date, setDate] = useState(new Date());
   const [description, setDescription] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
 
@@ -34,6 +36,7 @@ const TransactionsForm = ({ onAddTransaction }) => {
       categoryId,
       date: format(date, 'yyyy-MM-dd'),
       description,
+      accountId: accountId || null,
     });
 
     // Reset form (keep date)
@@ -122,6 +125,10 @@ const TransactionsForm = ({ onAddTransaction }) => {
               />
             </div>
           </div>
+        </div>
+
+        <div className="form-group">
+          <AccountSelect value={accountId} onChange={setAccountId} />
         </div>
 
         <div className="form-group">

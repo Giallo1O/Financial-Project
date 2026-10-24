@@ -60,6 +60,7 @@ public class RecurringTransactionService {
             r.setAmount(details.getAmount());
             r.setType(details.getType());
             r.setCategoryId(details.getCategoryId());
+            r.setAccountId(details.getAccountId());
             r.setRecurrenceInterval(details.getRecurrenceInterval());
             r.setDayOfMonth(details.getDayOfMonth());
             r.setStartDate(details.getStartDate());
@@ -91,7 +92,8 @@ public class RecurringTransactionService {
                 recurring.getType(),
                 recurring.getCategoryId(),
                 recurring.getUserId(),
-                effectiveDate
+                effectiveDate,
+                recurring.getAccountId()
         );
         Transaction createdTx = transactionService.createTransaction(txRequest);
 
