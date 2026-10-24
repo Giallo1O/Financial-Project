@@ -40,12 +40,12 @@ class RecurringTransactionServiceTest {
 	void confirmCreatesTransactionAndMovesDueDateToNextMonthClampedToMonthEnd() {
 		RecurringTransaction r = rent(LocalDate.of(2026, 1, 31));
 		when(repo.findById(r.getId())).thenReturn(Optional.of(r));
-		when(transactions.createTransaction(any())).thenReturn(Transaction.builder().build());
+		when(transactions.createForRecurring(any(), any())).thenReturn(Transaction.builder().build());
 
 		service.confirm(owner, r.getId(), null);
 
 		ArgumentCaptor<TransactionRequest> sent = ArgumentCaptor.forClass(TransactionRequest.class);
-		verify(transactions).createTransaction(sent.capture());
+		verify(transactions).createForRecurring(sent.capture(), any());
 		assertEquals(LocalDate.of(2026, 1, 31), sent.getValue().transactionDate());
 		assertEquals(owner, sent.getValue().userId());
 		assertEquals(LocalDate.of(2026, 2, 28), r.getNextDueDate());
@@ -59,7 +59,7 @@ class RecurringTransactionServiceTest {
 
 		assertThrows(ResponseStatusException.class, () -> service.confirm(UUID.randomUUID(), r.getId(), null));
 		assertThrows(ResponseStatusException.class, () -> service.delete(UUID.randomUUID(), r.getId()));
-		verify(transactions, never()).createTransaction(any());
+		verify(transactions, never()).createForRecurring(any(), any());
 	}
 
 	@Test
@@ -68,7 +68,7 @@ class RecurringTransactionServiceTest {
 		r.setActive(true);
 		r.setEndDate(LocalDate.of(2026, 2, 15));
 		when(repo.findById(r.getId())).thenReturn(Optional.of(r));
-		when(transactions.createTransaction(any())).thenReturn(Transaction.builder().build());
+		when(transactions.createForRecurring(any(), any())).thenReturn(Transaction.builder().build());
 
 		service.confirm(owner, r.getId(), null); // prossima scadenza 28/02 > fine 15/02
 
@@ -84,7 +84,7 @@ class RecurringTransactionServiceTest {
 
 		assertEquals(0, service.processDueAutoConfirm(null).size());
 
-		verify(transactions, never()).createTransaction(any());
+		verify(transactions, never()).createForRecurring(any(), any());
 		assertEquals(false, r.isActive());
 	}
 }

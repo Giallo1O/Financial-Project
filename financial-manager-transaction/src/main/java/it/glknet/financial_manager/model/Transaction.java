@@ -45,6 +45,12 @@ public class Transaction {
 
 	private LocalDate transactionDate;
 
+	/**
+	 * Ricorrenza da cui viene il movimento (confermata a mano o in automatico, oppure movimento della banca collegato
+	 * alla scadenza): serve a non contare due volte la stessa spesa tra ricorrenze e import.
+	 */
+	private UUID recurringId;
+
 	private LocalDateTime createdAt;
 
 	@PrePersist

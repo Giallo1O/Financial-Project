@@ -119,4 +119,57 @@ class TransactionServiceTest {
 		var notes = service.findDuplicates(user, List.of(coffee("BAR CENTRALE"), coffee("BAR CENTRALE")));
 		assertEquals(java.util.Arrays.asList("Stessa data e importo di \"caffe\"", null), notes);
 	}
+
+	// ---- ricorrenze e import: la stessa spesa non va contata due volte
+
+	private final UUID recurringId = UUID.randomUUID();
+
+	@Test
+	void bankRowOfAVariableBillUpdatesTheMovementCreatedByItsRecurring() {
+		// la ricorrenza ha registrato la bolletta il 3 con l'importo stimato; la banca la addebita il 5 con quello vero
+		Transaction fromRecurring = Transaction.builder().id(UUID.randomUUID()).userId(user).description("Telecom")
+				.amount(new BigDecimal("33.90")).type(TransactionType.USCITA).transactionDate(LocalDate.of(2026, 10, 3))
+				.recurringId(recurringId).build();
+		when(repo.findByUserIdAndTransactionDateBetween(any(), any(), any())).thenReturn(List.of(fromRecurring));
+		when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+		var bank = new TransactionRequest("Telecom Italia S.p.A", new BigDecimal("41.20"), TransactionType.USCITA, null,
+				user, LocalDate.of(2026, 10, 5));
+
+		assertEquals("Già registrato dalla ricorrenza \"Telecom\" del 03/10/2026: prende data e importo della banca",
+				service.findDuplicates(user, List.of(bank)).get(0));
+		assertEquals(new ImportResult(0, 1), service.importAll(user, List.of(bank)));
+		assertEquals(0, new BigDecimal("41.20").compareTo(fromRecurring.getAmount()));
+		assertEquals(LocalDate.of(2026, 10, 5), fromRecurring.getTransactionDate());
+		assertEquals(recurringId, fromRecurring.getRecurringId());
+	}
+
+	@Test
+	void confirmingARecurringLinksTheBankMovementAlreadyImported() {
+		Transaction bank = Transaction.builder().id(UUID.randomUUID()).userId(user).description("SPOTIFY*P46F75FB2D")
+				.amount(new BigDecimal("20.99")).type(TransactionType.USCITA).transactionDate(LocalDate.of(2026, 10, 19))
+				.build();
+		Transaction other = Transaction.builder().id(UUID.randomUUID()).userId(user).description("BENNET 12")
+				.amount(new BigDecimal("31.40")).type(TransactionType.USCITA).transactionDate(LocalDate.of(2026, 10, 18))
+				.build();
+		when(repo.findByUserIdAndTransactionDateBetween(any(), any(), any())).thenReturn(List.of(other, bank));
+		when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+		Transaction result = service.createForRecurring(new TransactionRequest("Spotify", new BigDecimal("20.99"),
+				TransactionType.USCITA, null, user, LocalDate.of(2026, 10, 18)), recurringId);
+
+		assertEquals(bank.getId(), result.getId()); // nessun movimento nuovo
+		assertEquals(recurringId, bank.getRecurringId());
+		verify(repo, times(1)).save(any());
+	}
+
+	@Test
+	void confirmingARecurringWithoutBankMovementCreatesIt() {
+		when(repo.save(any())).thenAnswer(i -> i.getArgument(0));
+
+		Transaction result = service.createForRecurring(new TransactionRequest("Spotify", new BigDecimal("20.99"),
+				TransactionType.USCITA, null, user, LocalDate.of(2026, 10, 18)), recurringId);
+
+		assertEquals(recurringId, result.getRecurringId());
+		assertEquals(0, new BigDecimal("20.99").compareTo(result.getAmount()));
+	}
 }

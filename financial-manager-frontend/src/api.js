@@ -370,6 +370,12 @@ export async function confirmRecurringTransaction(id, date) {
   return await response.json();
 }
 
+/** Ricorrenze trovate nei movimenti: [{ keyword, description, type, amount, variableAmount, dayOfMonth, categoryId, months, lastDate }]. */
+export async function fetchRecurringSuggestions() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions/suggestions`);
+  return await response.json();
+}
+
 export async function processAutoRecurringTransactions() {
   const userId = getCurrentUserId();
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/recurring-transactions/process-auto?userId=${encodeURIComponent(userId)}`, {
