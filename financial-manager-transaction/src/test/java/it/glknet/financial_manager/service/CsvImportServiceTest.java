@@ -73,4 +73,22 @@ class CsvImportServiceTest {
 		assertEquals(TransactionType.USCITA, rows.get(1).type());
 		assertEquals(LocalDate.of(2026, 10, 3), rows.get(1).transactionDate());
 	}
+
+	@Test
+	void n26TransfersBetweenMainAccountAndSpacesAreSkippedAndCounted() {
+		String csv = """
+				"Booking Date","Value Date","Partner Name","Partner Iban",Type,"Payment Reference","Account Name","Amount (EUR)","Original Amount","Original Currency","Exchange Rate"
+				2026-01-05,2026-01-05,Vacanze,,"Debit Transfer","Regola mensile","Conto corrente principale",-200.00,,,
+				2026-01-05,2026-01-05,"Conto corrente principale",,"Credit Transfer","Regola mensile",Vacanze,200.00,,,
+				2026-01-06,2026-01-06,"Conto corrente principale",,"Debit Transfer",Spotify,Abbonamenti,-20.99,,,
+				2026-01-07,2026-01-07,SPOTIFY,,Presentment,,Abbonamenti,-20.99,,,
+				2026-01-08,2026-01-08,"BENNET        12",,Presentment,,"Conto corrente principale",-31.40,,,
+				""";
+
+		CsvImportService.Parsed parsed = new CsvImportService()
+				.parse(new MockMultipartFile("file", "x.csv", "text/csv", csv.getBytes()));
+
+		assertEquals(3, parsed.internalTransfers()); // i due lati del giroconto e il trasferimento verso lo Space
+		assertEquals(List.of("SPOTIFY", "BENNET 12"), parsed.rows().stream().map(TransactionRequest::description).toList());
+	}
 }

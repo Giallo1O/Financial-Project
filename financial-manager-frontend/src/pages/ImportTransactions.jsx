@@ -90,7 +90,9 @@ const ImportTransactions = () => {
         transactionDate: t.transactionDate ? parseISO(t.transactionDate) : new Date()
       })));
       setCurrentStep(2);
-      setMessage({ text: '', type: '' });
+      setMessage(data.internalTransfers > 0
+        ? { text: `${data.internalTransfers} spostamenti tra i tuoi conti/Spaces non vengono importati: non sono né spese né entrate.`, type: 'success' }
+        : { text: '', type: '' });
     } catch (error) {
       console.error('Upload Error:', error);
       setMessage({ text: 'Non riesco a leggere il CSV. Controlla il formato del file.', type: 'error' });

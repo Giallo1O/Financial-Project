@@ -227,7 +227,10 @@ export async function parseCsv(file) {
     method: 'POST',
     body: formData,
   });
-  return await response.json();
+  const rows = await response.json();
+  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
+  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
+  return rows;
 }
 
 /** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
@@ -385,7 +388,10 @@ export async function scanReceipt(files) {
     method: 'POST',
     body: formData,
   });
-  return await response.json();
+  const rows = await response.json();
+  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
+  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
+  return rows;
 }
 
 export async function saveReceipt(receipt) {

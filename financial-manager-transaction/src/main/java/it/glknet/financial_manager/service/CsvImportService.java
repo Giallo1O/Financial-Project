@@ -9,6 +9,8 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 
@@ -44,8 +46,18 @@ public class CsvImportService {
 	private static final List<String> DESC_COLS = List.of("partner name", "descrizione operazione", "descrizione",
 			"description", "causale", "beneficiario", "payee", "merchant", "esercente");
 	private static final List<String> REF_COLS = List.of("payment reference", "riferimento", "dettagli");
+	/** Conto o sottoconto della riga (N26: conto principale o uno Space). */
+	private static final List<String> ACCOUNT_COLS = List.of("account name");
+
+	/** Righe da importare e numero di spostamenti tra i propri conti/Spaces saltati. */
+	public record Parsed(List<TransactionRequest> rows, int internalTransfers) {
+	}
 
 	public List<TransactionRequest> parseCsv(MultipartFile file) {
+		return parse(file).rows();
+	}
+
+	public Parsed parse(MultipartFile file) {
 		try {
 			String text = decode(file.getBytes());
 			char separator = detectSeparator(text);
@@ -55,18 +67,18 @@ public class CsvImportService {
 				all = reader.readAll();
 			}
 			if (all.isEmpty()) {
-				return List.of();
+				return new Parsed(List.of(), 0);
 			}
 			Columns cols = Columns.of(all.get(0));
 			List<String[]> rows = all.subList(1, all.size());
-			return cols.usable() ? byHeader(rows, cols) : byGuess(rows);
+			return cols.usable() ? byHeader(rows, cols) : new Parsed(byGuess(rows), 0);
 		} catch (Exception e) {
 			log.error("Failed to parse CSV file", e);
 			throw new RuntimeException("Failed to parse CSV: " + e.getMessage());
 		}
 	}
 
-	private record Columns(int date, int amount, int in, int out, int desc, int ref) {
+	private record Columns(int date, int amount, int in, int out, int desc, int ref, int account) {
 
 		static Columns of(String[] header) {
 			List<String> h = new ArrayList<>();
@@ -74,7 +86,7 @@ public class CsvImportService {
 				h.add(c == null ? "" : c.replace("﻿", "").replace("\"", "").trim().toLowerCase(Locale.ROOT));
 			}
 			return new Columns(find(h, DATE_COLS), find(h, AMOUNT_COLS), find(h, IN_COLS), find(h, OUT_COLS),
-					find(h, DESC_COLS), find(h, REF_COLS));
+					find(h, DESC_COLS), find(h, REF_COLS), find(h, ACCOUNT_COLS));
 		}
 
 		private static int find(List<String> header, List<String> names) {
@@ -92,9 +104,25 @@ public class CsvImportService {
 		}
 	}
 
-	private List<TransactionRequest> byHeader(List<String[]> rows, Columns c) {
+	private Parsed byHeader(List<String[]> rows, Columns c) {
+		// N26 esporta conto principale e Spaces insieme: uno spostamento tra due di questi compare due volte (uscita da
+		// uno, entrata nell'altro) con come controparte il nome dell'altro conto. Non e' ne' spesa ne' entrata.
+		Set<String> ownAccounts = new HashSet<>();
+		if (c.account() >= 0) {
+			for (String[] row : rows) {
+				String a = cell(row, c.account());
+				if (!a.isEmpty()) {
+					ownAccounts.add(a.toLowerCase(Locale.ROOT));
+				}
+			}
+		}
 		List<TransactionRequest> out = new ArrayList<>();
+		int internal = 0;
 		for (String[] row : rows) {
+			if (!ownAccounts.isEmpty() && ownAccounts.contains(cell(row, c.desc()).toLowerCase(Locale.ROOT))) {
+				internal++;
+				continue;
+			}
 			LocalDate date = tryParseDate(cell(row, c.date()));
 			BigDecimal amount = c.amount() >= 0 ? parseAmount(cell(row, c.amount())) : null;
 			if (amount == null && (c.in() >= 0 || c.out() >= 0)) {
@@ -110,10 +138,11 @@ public class CsvImportService {
 			if (desc.isEmpty()) {
 				desc = cell(row, c.ref());
 			}
+			desc = desc.replaceAll("\\s+", " "); // "BENNET        12" -> "BENNET 12"
 			out.add(new TransactionRequest(desc.isEmpty() ? "Movimento importato" : desc, amount.abs(),
 					amount.signum() > 0 ? TransactionType.ENTRATA : TransactionType.USCITA, null, null, date));
 		}
-		return out;
+		return new Parsed(out, internal);
 	}
 
 	/** Formato sconosciuto: indovina le colonne riga per riga. */
