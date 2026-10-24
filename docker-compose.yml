@@ -125,6 +125,41 @@ services:
           sleep 86400
         done
 
+  # BOZZA NON PROVATA (nell'ambiente di sviluppo non c'era Docker): copia dei backup FUORI dal server con restic.
+  # Cifrata con RESTIC_PASSWORD e con storico (14 giorni, 8 settimane, 12 mesi). Parte con:
+  #   docker compose --profile offsite up -d
+  # Da fare prima: scegliere la destinazione e compilare RESTIC_* nel file .env (vedi .env.example e README).
+  # Le variabili non sono "obbligatorie" qui sopra di proposito: in compose un `:?` romperebbe anche l'avvio normale.
+  backup-offsite:
+    image: restic/restic:0.17.3
+    profiles: ["offsite"]
+    container_name: db-backup-offsite
+    hostname: finmanager # restic raggruppa le copie per nome macchina: non cambiarlo
+    environment:
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:-}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:-}
+      # Solo per destinazioni S3 / Backblaze B2 (via S3): chiavi di accesso
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    volumes:
+      - ./backups:/backups:ro
+      - ./offsite:/root/.ssh:ro # solo per sftp: qui vanno la chiave privata (id_ed25519) e known_hosts
+    depends_on:
+      - backup
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$RESTIC_REPOSITORY" ] || [ -z "$$RESTIC_PASSWORD" ]; then
+          echo "Imposta RESTIC_REPOSITORY e RESTIC_PASSWORD nel file .env"; exit 1
+        fi
+        restic cat config >/dev/null 2>&1 || restic init || exit 1
+        sleep 300 # aspetta che il servizio backup abbia finito il dump del giorno
+        while true; do
+          restic backup /backups && restic forget --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+          sleep 86400
+        done
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin

@@ -188,6 +188,17 @@ Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni gi
 
 **Sono sullo stesso disco del server:** se il disco si rompe, si perdono anche i backup. Copia ogni tanto la cartella su un altro supporto (NAS, disco esterno, altro PC).
 
+### Copia fuori dal server (bozza, non provata)
+
+Il servizio `backup-offsite` (compose, profilo `offsite`) copia ogni giorno la cartella `backups` su una destinazione esterna con [restic](https://restic.net): le copie sono **cifrate**, con storico (14 giorni, 8 settimane, 12 mesi) e senza duplicare i dati uguali. È scritto ma **mai avviato** (nell'ambiente di sviluppo non c'era Docker).
+
+Da fare tu:
+
+1. Scegli la destinazione e compila `RESTIC_REPOSITORY` e `RESTIC_PASSWORD` nel `.env` (esempi in `.env.example`: NAS o altro PC via sftp, Backblaze B2, disco esterno). Per sftp metti la chiave privata e `known_hosts` in `./offsite/`; per un disco esterno aggiungi il volume al servizio.
+2. `docker compose --profile offsite up -d`, poi `docker logs db-backup-offsite`: alla prima esecuzione crea il deposito (`restic init`) e fa la prima copia.
+3. **Provane il ripristino una volta** (una copia mai provata non è una copia): `docker compose run --rm --entrypoint restic backup-offsite restore latest --target /tmp/prova` e controlla che i file ci siano.
+4. **Conserva `RESTIC_PASSWORD` anche fuori dal server** (gestore di password): senza, le copie non si aprono più.
+
 Ripristino su database vuoto:
 
 ```bash
@@ -240,7 +251,7 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
 - ⚠️ **Tailscale non provato:** nell'ambiente non c'era un account Tailscale né Docker. La configurazione (`tailscale/serve.json`, il servizio nel compose, i comandi) è scritta in base al codice sorgente ufficiale di Tailscale e controllata nella sintassi, ma non è mai stata avviata.
 - ⚠️ **Non provata su telefoni veri** (Android, Safari su iPhone): l'emulazione non riproduce fotocamera, installazione e comportamenti di Safari. Anche la configurazione di nginx (limite di upload, timeout, regole per `sw.js`) non è stata avviata perché nginx non c'era nell'ambiente.
-- ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
+- ⚠️ Non provati: la copia fuori dal server (`backup-offsite`), `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
 ### Limiti noti e cose aperte
 
