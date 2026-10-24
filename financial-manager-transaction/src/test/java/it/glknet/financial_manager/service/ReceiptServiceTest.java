@@ -70,6 +70,23 @@ class ReceiptServiceTest {
 	}
 
 	@Test
+	void productStatsUseThePricePaidAfterTheDiscount() {
+		// 15 birre a 1,28 di listino con 6,45 di sconto: pagate 12,75, cioe' 0,85 l'una
+		when(items.findRows(any(), any(), any())).thenReturn(List.of(
+				new ProductRow("Birra", "pz", "Bevande", new BigDecimal("15"), new BigDecimal("1.28"),
+						new BigDecimal("12.75"), LocalDate.parse("2026-10-24"), "Bennet"),
+				new ProductRow("Birra", "pz", "Bevande", new BigDecimal("6"), new BigDecimal("0.99"),
+						new BigDecimal("5.94"), LocalDate.parse("2026-10-20"), "Lidl")));
+
+		ProductSummary p = service.products(user).get(0);
+
+		assertEquals(0, new BigDecimal("0.85").compareTo(p.lastUnitPrice()));
+		assertEquals(0, new BigDecimal("0.85").compareTo(p.minUnitPrice()));
+		assertEquals("Bennet", p.cheapestStore()); // con lo sconto conviene Bennet, non Lidl
+		assertEquals(0, new BigDecimal("0.85").compareTo(service.history(user, "Birra", "pz").get(1).unitPrice()));
+	}
+
+	@Test
 	void spendingSubtractsDiscountsFromTheirCategory() {
 		when(items.findRows(any(), any(), any())).thenReturn(List.of(
 				row("Spaghetti", "pz", "Dispensa", "1.20", "4.80", "2026-10-18", "Esselunga"),
@@ -89,7 +106,7 @@ class ReceiptServiceTest {
 				.thenReturn(true);
 		ReceiptRequest req = new ReceiptRequest("Esselunga", LocalDate.of(2026, 10, 18), new BigDecimal("9.76"), null,
 				List.of(new ReceiptItemDto("X", "Yogurt", "Latticini e uova", BigDecimal.ONE, "pz", BigDecimal.ONE,
-						BigDecimal.ONE)),
+						BigDecimal.ONE, null)),
 				null);
 
 		ResponseStatusException e = assertThrows(ResponseStatusException.class, () -> service.save(user, req));
@@ -110,7 +127,7 @@ class ReceiptServiceTest {
 	private ReceiptRequest request(UUID categoryId, UUID link) {
 		return new ReceiptRequest("Esselunga", LocalDate.of(2026, 10, 18), new BigDecimal("9.76"), categoryId,
 				List.of(new ReceiptItemDto("X", "Yogurt", "Latticini e uova", BigDecimal.ONE, "pz", BigDecimal.ONE,
-						BigDecimal.ONE)),
+						BigDecimal.ONE, null)),
 				link);
 	}
 

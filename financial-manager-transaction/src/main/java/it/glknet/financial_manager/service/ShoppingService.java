@@ -210,7 +210,7 @@ public class ShoppingService {
 	 */
 	public List<ShoppingSuggestion> suggestions(UUID userId, LocalDate today) {
 		Map<String, List<ProductRow>> byProduct = receiptItems.findRows(userId, MIN, MAX).stream()
-				.filter(r -> r.unitPrice() != null && r.unitPrice().signum() > 0 && r.name() != null)
+				.filter(r -> r.paidUnitPrice() != null && r.name() != null)
 				.collect(Collectors.groupingBy(r -> productKey(r.name(), r.unit()), LinkedHashMap::new,
 						Collectors.toList()));
 		List<ShoppingSuggestion> result = new ArrayList<>();
@@ -220,13 +220,13 @@ public class ShoppingService {
 			LocalDate first = days.first();
 			LocalDate last = days.last();
 			ProductRow latest = rows.get(rows.size() - 1);
-			ProductRow cheapest = rows.stream().min(Comparator.comparing(ProductRow::unitPrice)).orElse(latest);
+			ProductRow cheapest = rows.stream().min(Comparator.comparing(ProductRow::paidUnitPrice)).orElse(latest);
 			Integer avg = days.size() >= 2
 					? (int) Math.round((double) ChronoUnit.DAYS.between(first, last) / (days.size() - 1)) : null;
 			long since = Math.max(0, ChronoUnit.DAYS.between(last, today));
 			boolean due = avg != null && avg > 0 && since >= 0.8 * avg;
 			result.add(new ShoppingSuggestion(latest.name(), latest.unit(), latest.foodCategory(), days.size(), last, avg,
-					since, due, latest.unitPrice(), cheapest.unitPrice(), cheapest.storeName()));
+					since, due, latest.paidUnitPrice(), cheapest.paidUnitPrice(), cheapest.storeName()));
 		}
 		result.sort(Comparator.comparing(ShoppingSuggestion::due).reversed()
 				.thenComparing(s -> s.due() ? -(double) s.daysSinceLast() / s.avgIntervalDays() : 0.0)
