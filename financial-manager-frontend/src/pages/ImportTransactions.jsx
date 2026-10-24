@@ -320,7 +320,7 @@ const ImportTransactions = () => {
                           onChange={(e) => handleRowChange(t.tempId, 'categoryId', e.target.value)}
                           className="form-select"
                         >
-                          <option value="">-- No Category --</option>
+                          <option value="">-- Senza categoria --</option>
                           {categories.map(c => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                           ))}
