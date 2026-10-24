@@ -162,4 +162,44 @@ class CategoryRuleServiceTest {
 		return Transaction.builder().id(UUID.randomUUID()).userId(user).description(description)
 				.amount(BigDecimal.TEN).type(TransactionType.USCITA).categoryId(c.getId()).build();
 	}
+
+	private Transaction uncategorized(String description, TransactionType type, String amount) {
+		return Transaction.builder().id(UUID.randomUUID()).userId(user).description(description)
+				.amount(new BigDecimal(amount)).type(type).build();
+	}
+
+	@Test
+	void applyingRulesCategorizesOnlyUncategorizedMovementsOfTheRightType() {
+		givenRules(rule("bennet", shopping), rule("stipendio", salary));
+		Transaction bennet = uncategorized("BENNET 12", TransactionType.USCITA, "31.40");
+		Transaction salaryAsExpense = uncategorized("STIPENDIO", TransactionType.USCITA, "5"); // tipo sbagliato
+		Transaction already = tx("BENNET 8", subscriptions); // ha gia' una categoria: resta
+		Transaction unknown = uncategorized("COOP", TransactionType.USCITA, "9");
+		when(transactions.findByUserId(user)).thenReturn(List.of(bennet, salaryAsExpense, already, unknown));
+
+		assertEquals(1, service.applyToUncategorized(user));
+		assertEquals(shopping.getId(), bennet.getCategoryId());
+		assertNull(salaryAsExpense.getCategoryId());
+		assertEquals(subscriptions.getId(), already.getCategoryId());
+		assertNull(unknown.getCategoryId());
+	}
+
+	@Test
+	void uncategorizedMovementsAreGroupedByMerchantAndType() {
+		when(transactions.findByUserId(user)).thenReturn(List.of(
+				uncategorized("BENNET 12", TransactionType.USCITA, "31.40"),
+				uncategorized("BENNET 8", TransactionType.USCITA, "10.00"),
+				uncategorized("Pagamento POS Bennet", TransactionType.USCITA, "5.00"),
+				uncategorized("BENNET rimborso", TransactionType.ENTRATA, "3.00"),
+				uncategorized("D+", TransactionType.USCITA, "2.00"),
+				tx("BENNET 9", shopping)));
+
+		var groups = service.uncategorized(user);
+
+		assertEquals("bennet", groups.get(0).keyword());
+		assertEquals(3, groups.get(0).count());
+		assertEquals(0, new BigDecimal("46.40").compareTo(groups.get(0).total()));
+		assertEquals(TransactionType.USCITA, groups.get(0).type());
+		assertEquals(3, groups.size()); // bennet uscite, bennet entrate, "d"
+	}
 }

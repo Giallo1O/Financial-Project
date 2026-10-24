@@ -1,8 +1,10 @@
 package it.glknet.financial_manager.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -33,9 +35,57 @@ public class CategoryRuleService {
 	public record Suggestion(UUID categoryId, String keyword) {
 	}
 
+	/**
+	 * Movimenti senza categoria dello stesso esercente (stessa parola chiave) e dello stesso tipo: si categorizzano
+	 * tutti insieme creando la regola per la parola chiave e applicandola.
+	 */
+	public record MerchantGroup(String keyword, TransactionType type, int count, BigDecimal total,
+			List<String> examples) {
+	}
+
 	private final CategoryRuleRepository rules;
 	private final CategoryRepository categories;
 	private final TransactionRepository transactions;
+
+	/** Applica le regole ai movimenti gia' salvati che non hanno categoria; restituisce quanti ne ha categorizzati. */
+	@Transactional
+	public int applyToUncategorized(UUID userId) {
+		Matcher matcher = new Matcher(rules.findByUserId(userId), categoriesOf(userId));
+		int updated = 0;
+		for (Transaction t : transactions.findByUserId(userId)) {
+			Suggestion s = t.getCategoryId() != null ? null : matcher.best(t.getDescription(), t.getType());
+			if (s != null) {
+				t.setCategoryId(s.categoryId());
+				transactions.save(t);
+				updated++;
+			}
+		}
+		return updated;
+	}
+
+	/** Movimenti senza categoria raggruppati per esercente, i gruppi piu' numerosi per primi. */
+	public List<MerchantGroup> uncategorized(UUID userId) {
+		Map<String, List<Transaction>> groups = new LinkedHashMap<>();
+		for (Transaction t : transactions.findByUserId(userId)) {
+			if (t.getCategoryId() == null) {
+				groups.computeIfAbsent(merchantKeyword(t.getDescription()) + "|" + t.getType(), k -> new ArrayList<>())
+						.add(t);
+			}
+		}
+		return groups.values().stream().map(list -> new MerchantGroup(merchantKeyword(list.get(0).getDescription()),
+				list.get(0).getType(), list.size(),
+				list.stream().map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add),
+				list.stream().map(Transaction::getDescription).distinct().limit(3).toList()))
+				.sorted(Comparator.comparingInt(MerchantGroup::count).reversed()
+						.thenComparing(MerchantGroup::total, Comparator.reverseOrder()))
+				.toList();
+	}
+
+	/** La parola chiave dell'esercente; se la descrizione non ne ha una (es. "D+") la descrizione normalizzata. */
+	private static String merchantKeyword(String description) {
+		String k = TextKeywords.extractKeyword(description);
+		return k != null ? k : TextKeywords.normalize(description);
+	}
 
 	public List<CategoryRule> list(UUID userId) {
 		return rules.findByUserId(userId);

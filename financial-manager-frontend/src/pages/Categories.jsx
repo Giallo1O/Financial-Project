@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import CategoryRules from '../components/CategoryRules';
+import UncategorizedMerchants from '../components/UncategorizedMerchants';
 import '../components/Components.css'; // Corrected path
 
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rulesVersion, setRulesVersion] = useState(0); // ricarica le regole dopo un'assegnazione in blocco
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [icon, setIcon] = useState('tag');
@@ -485,7 +487,8 @@ const Categories = () => {
         </section>
       </div>
 
-      <CategoryRules categories={categories} />
+      <CategoryRules categories={categories} version={rulesVersion} />
+      <UncategorizedMerchants categories={categories} onRulesChanged={() => setRulesVersion(v => v + 1)} />
     </div>
   );
 };

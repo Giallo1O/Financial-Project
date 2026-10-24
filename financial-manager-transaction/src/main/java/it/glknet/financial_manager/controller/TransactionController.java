@@ -78,7 +78,8 @@ public class TransactionController {
 	@PostMapping("/parse-csv")
 	public ResponseEntity<List<ImportRow>> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam("file") MultipartFile file) {
-		List<TransactionRequest> rows = csvImportService.parseCsv(file);
+		CsvImportService.Parsed parsed = csvImportService.parse(file);
+		List<TransactionRequest> rows = parsed.rows();
 		List<String> duplicates = service.findDuplicates(userId, rows);
 		List<CategoryRuleService.Suggestion> suggestions = ruleService.suggest(userId, rows);
 		List<ImportRow> preview = new ArrayList<>();
@@ -89,7 +90,9 @@ public class TransactionController {
 					r.transactionDate(), duplicates.get(i) != null, duplicates.get(i),
 					s != null ? "Regola: " + s.keyword() : null));
 		}
-		return ResponseEntity.ok(preview);
+		// Spostamenti tra i propri conti/Spaces saltati dal parser: il frontend lo dice all'utente
+		return ResponseEntity.ok().header("X-Internal-Transfers", String.valueOf(parsed.internalTransfers()))
+				.body(preview);
 	}
 
 	@PostMapping("/bulk-import")

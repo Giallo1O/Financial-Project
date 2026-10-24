@@ -50,6 +50,18 @@ public class CategoryRuleController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** Applica le regole ai movimenti gia' salvati senza categoria. */
+	@PostMapping("/apply")
+	public Map<String, Integer> apply(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
+		return Map.of("updated", service.applyToUncategorized(userId));
+	}
+
+	/** Movimenti senza categoria raggruppati per esercente. */
+	@GetMapping("/uncategorized")
+	public List<CategoryRuleService.MerchantGroup> uncategorized(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
+		return service.uncategorized(userId);
+	}
+
 	/** Crea regole dalle transazioni gia' categorizzate. */
 	@PostMapping("/learn-from-history")
 	public Map<String, Integer> learnFromHistory(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {

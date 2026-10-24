@@ -230,7 +230,10 @@ export async function parseCsv(file) {
     method: 'POST',
     body: formData,
   });
-  return await response.json();
+  const rows = await response.json();
+  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
+  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
+  return rows;
 }
 
 /** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
@@ -388,7 +391,10 @@ export async function scanReceipt(files) {
     method: 'POST',
     body: formData,
   });
-  return await response.json();
+  const rows = await response.json();
+  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
+  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
+  return rows;
 }
 
 export async function saveReceipt(receipt) {
@@ -459,6 +465,18 @@ export async function saveCategoryRule(keyword, categoryId) {
 
 export async function deleteCategoryRule(id) {
   await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/${id}`, { method: 'DELETE' });
+}
+
+/** Applica le regole ai movimenti già salvati senza categoria; restituisce { updated }. */
+export async function applyCategoryRules() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/apply`, { method: 'POST' });
+  return await response.json();
+}
+
+/** Movimenti senza categoria raggruppati per esercente: [{ keyword, type, count, total, examples }]. */
+export async function fetchUncategorizedMerchants() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/uncategorized`);
+  return await response.json();
 }
 
 /** Crea regole dalle transazioni già categorizzate; restituisce { created }. */

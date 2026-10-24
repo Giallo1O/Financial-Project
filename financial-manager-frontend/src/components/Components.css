@@ -407,3 +407,19 @@
   .history-table .h-cat { grid-area: cat; min-width: 0; }
   .history-table .h-actions { grid-area: actions; }
 }
+
+/* Categorizzazione in blocco per esercente */
+.merchant-groups { display: flex; flex-direction: column; gap: 0.75rem; }
+.merchant-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+.merchant-info { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.merchant-info .text-sm { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .merchant-group { grid-template-columns: 1fr; }
+}
