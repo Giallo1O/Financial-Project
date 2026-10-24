@@ -326,7 +326,9 @@ metadata:
   name: db-backup
   namespace: finmanager
 spec:
-  schedule: "0 3 * * *"
+  # Prima del backup notturno di Proxmox (02:00 su nas-pbs), cosi' il backup contiene i dump della notte
+  schedule: "30 1 * * *"
+  timeZone: "Europe/Rome"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

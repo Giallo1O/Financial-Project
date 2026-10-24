@@ -178,7 +178,7 @@ Nella barra in basso del telefono c'è **Lista** (il Budget è passato in *Altro
 
 ## Backup e ripristino
 
-Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
+Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 01:30 ora italiana, prima del backup notturno di Proxmox su PBS delle 02:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
 
 **Sono sullo stesso disco del server:** se il disco si rompe, si perdono anche i backup. Copia ogni tanto la cartella su un altro supporto (NAS, disco esterno, altro PC).
 
