@@ -13,6 +13,8 @@ import Groceries from './pages/Groceries';
 import Shopping from './pages/Shopping';
 import Accounts from './pages/Accounts';
 import SharedExpenses from './pages/SharedExpenses';
+import Profile from './pages/Profile';
+import HaCallback from './pages/HaCallback';
 import ProtectedRoute from './components/ProtectedRoute';
 
 
@@ -21,6 +23,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Ritorno dal login di Home Assistant: fuori dalle pagine protette, puo' arrivare senza sessione */}
+        <Route path="/ha-callback" element={<HaCallback />} />
 
         {/* Authenticated Routes wrapped in ProtectedRoute (checks localStorage token) */}
         <Route element={<ProtectedRoute />}>
@@ -37,6 +41,7 @@ function App() {
           <Route path="/comparisons" element={<Comparisons />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/import" element={<ImportTransactions />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
         {/* Default redirect */}

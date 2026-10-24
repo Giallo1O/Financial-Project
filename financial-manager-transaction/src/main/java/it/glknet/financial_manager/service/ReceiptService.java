@@ -90,7 +90,8 @@ public class ReceiptService {
 					.name(dto.name().trim()).foodCategory(blankToOther(dto.foodCategory()))
 					.quantity(dto.quantity() == null ? BigDecimal.ONE : dto.quantity())
 					.unit(dto.unit() == null || dto.unit().isBlank() ? "pz" : dto.unit().trim().toLowerCase())
-					.unitPrice(dto.unitPrice()).totalPrice(dto.totalPrice()).build()));
+					.unitPrice(dto.unitPrice()).totalPrice(dto.totalPrice())
+					.discount(dto.discount() != null && dto.discount().signum() > 0 ? dto.discount() : null).build()));
 		}
 		return new ReceiptDetail(receipt, saved);
 	}
@@ -145,22 +146,22 @@ public class ReceiptService {
 		}
 	}
 
-	/** Riepilogo per prodotto (stesso nome e unita'): numero di acquisti e prezzi unitari min/medio/max. */
+	/** Riepilogo per prodotto (stesso nome e unita'): numero di acquisti e prezzi pagati per unita' (sconti compresi). */
 	public List<ProductSummary> products(UUID userId) {
 		Map<String, List<ProductRow>> byProduct = items.findRows(userId, MIN, MAX).stream()
-				.filter(r -> r.unitPrice() != null && r.unitPrice().signum() > 0)
+				.filter(r -> r.paidUnitPrice() != null)
 				.collect(Collectors.groupingBy(r -> productKey(r.name(), r.unit()), LinkedHashMap::new,
 						Collectors.toList()));
 		List<ProductSummary> result = new ArrayList<>();
 		for (List<ProductRow> rows : byProduct.values()) {
 			rows.sort(Comparator.comparing(ProductRow::purchaseDate));
 			ProductRow last = rows.get(rows.size() - 1);
-			ProductRow cheapest = rows.stream().min(Comparator.comparing(ProductRow::unitPrice)).orElse(last);
-			BigDecimal sum = rows.stream().map(ProductRow::unitPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+			ProductRow cheapest = rows.stream().min(Comparator.comparing(ProductRow::paidUnitPrice)).orElse(last);
+			BigDecimal sum = rows.stream().map(ProductRow::paidUnitPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
 			result.add(new ProductSummary(last.name(), last.unit(), last.foodCategory(), rows.size(),
-					last.unitPrice(), cheapest.unitPrice(),
+					last.paidUnitPrice(), cheapest.paidUnitPrice(),
 					sum.divide(BigDecimal.valueOf(rows.size()), 2, RoundingMode.HALF_UP),
-					rows.stream().map(ProductRow::unitPrice).max(Comparator.naturalOrder()).orElse(last.unitPrice()),
+					rows.stream().map(ProductRow::paidUnitPrice).max(Comparator.naturalOrder()).orElse(last.paidUnitPrice()),
 					last.purchaseDate(), last.storeName(), cheapest.storeName()));
 		}
 		result.sort(Comparator.comparing(ProductSummary::name, String.CASE_INSENSITIVE_ORDER));
@@ -170,10 +171,9 @@ public class ReceiptService {
 	public List<PricePoint> history(UUID userId, String name, String unit) {
 		String key = productKey(name, unit);
 		return items.findRows(userId, MIN, MAX).stream()
-				.filter(r -> productKey(r.name(), r.unit()).equals(key) && r.unitPrice() != null
-						&& r.unitPrice().signum() > 0)
+				.filter(r -> productKey(r.name(), r.unit()).equals(key) && r.paidUnitPrice() != null)
 				.sorted(Comparator.comparing(ProductRow::purchaseDate))
-				.map(r -> new PricePoint(r.purchaseDate(), r.storeName(), r.unitPrice(), r.quantity())).toList();
+				.map(r -> new PricePoint(r.purchaseDate(), r.storeName(), r.paidUnitPrice(), r.quantity())).toList();
 	}
 
 	/** Spesa per tipo di alimento in un periodo (gli sconti riducono il totale della loro categoria). */

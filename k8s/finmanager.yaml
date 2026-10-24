@@ -172,6 +172,14 @@ spec:
                   name: finmanager-anthropic
                   key: api-key
                   optional: true
+            # Chiave che cifra i segreti nel database (collegamento ad Home Assistant). Senza, il collegamento non e' disponibile.
+            # Si crea una volta: kubectl -n finmanager create secret generic finmanager-app --from-literal=secret-key="$(openssl rand -base64 32)"
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: finmanager-app
+                  key: secret-key
+                  optional: true
             - name: SPRING_DATASOURCE_USERNAME
               value: user
             - name: SPRING_DATASOURCE_PASSWORD
@@ -326,7 +334,9 @@ metadata:
   name: db-backup
   namespace: finmanager
 spec:
-  schedule: "0 3 * * *"
+  # Prima del backup notturno di Proxmox (02:00 su nas-pbs), cosi' il backup contiene i dump della notte
+  schedule: "30 1 * * *"
+  timeZone: "Europe/Rome"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

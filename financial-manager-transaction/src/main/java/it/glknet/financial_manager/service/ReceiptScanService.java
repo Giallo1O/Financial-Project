@@ -1,5 +1,6 @@
 package it.glknet.financial_manager.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -25,6 +26,7 @@ import com.anthropic.models.messages.StructuredMessage;
 import com.anthropic.models.messages.StructuredMessageCreateParams;
 import com.anthropic.models.messages.TextBlockParam;
 
+import it.glknet.financial_manager.dto.ReceiptItemDto;
 import it.glknet.financial_manager.dto.ScannedReceipt;
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,8 +49,14 @@ public class ReceiptScanService {
 			- Una voce in items per ogni articolo acquistato, nell'ordine dello scontrino. Non includere subtotali, IVA, resto, metodo di pagamento, punti fedelta'.
 			- name: nome leggibile in italiano; espandi le abbreviazioni (es. "LATTE P.S. 1L" diventa "Latte parzialmente scremato 1L"). Lo stesso prodotto deve avere sempre lo stesso nome, quindi non aggiungere dettagli che non sono stampati.
 			- Articoli a peso o volume (es. "0,532 kg x 2,99 EUR/kg"): quantity e' il peso, unit e' kg, unitPrice e' il prezzo al kg. Per gli altri articoli unit e' pz e quantity il numero di pezzi.
-			- Se una riga riporta quantita' e prezzo unitario (es. "2 x 1,20"), unitPrice e' 1.20 e totalPrice 2.40.
-			- Sconti, coupon e promozioni: una voce a parte con totalPrice negativo e name "Sconto: <articolo>"; foodCategory dell'articolo scontato.
+			- Se una riga riporta quantita' e prezzo unitario (es. "2 x 1,20"), unitPrice e' 1.20 (prezzo pieno).
+			- Sconti, promozioni e "sconto %" stampati sotto un articolo vanno sull'articolo stesso, non in una voce a parte:
+			  discount e' l'importo totale scontato su quella riga (positivo) e totalPrice e' quanto pagato dopo lo sconto.
+			  Esempio: "2 x 1,20 = 2,40" seguito da "SCONTO -0,80" diventa quantity 2, unitPrice 1.20, discount 0.80, totalPrice 1.60.
+			  Senza sconto discount e' 0 e totalPrice e' quantity x unitPrice.
+			- Solo gli sconti sul totale non legati a un articolo (buoni, punti fedelta' spesi, arrotondamenti) restano una voce a parte
+			  con name "Sconto: <descrizione>", foodCategory Altro, quantity 1, unitPrice e totalPrice negativi, discount 0.
+			- La somma dei totalPrice deve essere uguale a total.
 			- Numeri con punto decimale (es. 1.20). Non inventare: se una riga e' illeggibile omettila e segnalala in warnings.
 			""";
 
@@ -98,7 +106,8 @@ public class ReceiptScanService {
 				throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
 						"Non sono riuscito a leggere lo scontrino. Riprova con una foto piu' nitida.");
 			}
-			return result;
+			return new ScannedReceipt(result.storeName(), result.purchaseDate(), result.total(),
+					attachDiscounts(result.items()), result.warnings());
 		} catch (AnthropicServiceException e) {
 			log.error("Errore API Anthropic {}: {}", e.statusCode(), e.getMessage());
 			if (e.statusCode() == 401 || e.statusCode() == 403) {
@@ -147,5 +156,42 @@ public class ReceiptScanService {
 		};
 		return ContentBlockParam.ofImage(ImageBlockParam.builder()
 				.source(Base64ImageSource.builder().data(data).mediaType(mediaType).build()).build());
+	}
+
+	/**
+	 * Rete di sicurezza sulla risposta dell'AI: una riga "Sconto: X" negativa subito dopo l'articolo X viene unita
+	 * all'articolo (discount e totalPrice netto); se un articolo ha uno sconto ma totalPrice e' ancora il prezzo pieno,
+	 * lo sconto viene tolto. Le altre righe negative (sconti sul totale) restano come sono.
+	 */
+	static List<ReceiptItemDto> attachDiscounts(List<ReceiptItemDto> items) {
+		List<ReceiptItemDto> out = new ArrayList<>();
+		for (ReceiptItemDto item : items) {
+			ReceiptItemDto prev = out.isEmpty() ? null : out.get(out.size() - 1);
+			if (prev != null && item.totalPrice() != null && item.totalPrice().signum() < 0 && item.name() != null
+					&& prev.name() != null && prev.totalPrice() != null && prev.totalPrice().signum() > 0
+					&& item.name().replaceFirst("(?i)^sconto\\s*:?\\s*", "").trim().equalsIgnoreCase(prev.name().trim())) {
+				BigDecimal extra = item.totalPrice().negate();
+				out.set(out.size() - 1, withDiscount(prev, nz(prev.discount()).add(extra), prev.totalPrice().subtract(extra)));
+				continue;
+			}
+			BigDecimal discount = nz(item.discount());
+			if (discount.signum() > 0 && item.unitPrice() != null && item.quantity() != null && item.totalPrice() != null) {
+				BigDecimal gross = item.unitPrice().multiply(item.quantity());
+				if (gross.subtract(item.totalPrice()).abs().compareTo(new BigDecimal("0.01")) <= 0) {
+					item = withDiscount(item, discount, item.totalPrice().subtract(discount));
+				}
+			}
+			out.add(item);
+		}
+		return out;
+	}
+
+	private static ReceiptItemDto withDiscount(ReceiptItemDto i, BigDecimal discount, BigDecimal total) {
+		return new ReceiptItemDto(i.rawName(), i.name(), i.foodCategory(), i.quantity(), i.unit(), i.unitPrice(), total,
+				discount);
+	}
+
+	private static BigDecimal nz(BigDecimal v) {
+		return v == null ? BigDecimal.ZERO : v;
 	}
 }

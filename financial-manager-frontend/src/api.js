@@ -625,3 +625,53 @@ export async function fetchForecast() {
 export async function fetchAlerts() {
   return (await authenticatedFetch(`${TRANSACTION_API}/api/alerts`)).json();
 }
+
+// ─── Home Assistant (collegamento dell'account dal Profilo) ────────────────
+
+const HA = `${TRANSACTION_API}/api/home-assistant`;
+
+/** { available, linked, valid, url, entityId, linkedAt } */
+export async function fetchHomeAssistantStatus() {
+  return (await authenticatedFetch(HA)).json();
+}
+
+/** Prepara il login: restituisce l'indirizzo della pagina di login di Home Assistant. */
+export async function startHomeAssistantLink(url) {
+  const res = await authenticatedFetch(`${HA}/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, origin: window.location.origin }),
+  });
+  return (await res.json()).authorizeUrl;
+}
+
+/** Ritorno dal login di HA: non serve la sessione (sul telefono il login puo' aprirsi in un'altra finestra). */
+export async function finishHomeAssistantLink(state, code) {
+  const res = await fetch(`${HA}/callback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state, code }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message || `HTTP ${res.status}`);
+  }
+}
+
+export async function unlinkHomeAssistant() {
+  await authenticatedFetch(`${HA}/link`, { method: 'DELETE' });
+}
+
+/** Liste todo dell'account HA collegato: [{ entityId, name }] */
+export async function fetchHomeAssistantLists() {
+  return (await authenticatedFetch(`${HA}/lists`)).json();
+}
+
+export async function chooseHomeAssistantList(entityId) {
+  const res = await authenticatedFetch(`${HA}/list`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entityId }),
+  });
+  return res.json();
+}

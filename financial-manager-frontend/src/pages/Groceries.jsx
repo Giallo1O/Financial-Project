@@ -157,14 +157,24 @@ const ScanTab = ({ setMessage, onSaved }) => {
     }
   };
 
+  // Cambiando quantita', prezzo o sconto l'importo pagato si ricalcola (quantita' x prezzo - sconto)
   const setItem = (key, field, value) =>
-    setDraft(d => ({ ...d, items: d.items.map(i => (i.key === key ? { ...i, [field]: value } : i)) }));
+    setDraft(d => ({
+      ...d, items: d.items.map(i => {
+        if (i.key !== key) return i;
+        const next = { ...i, [field]: value };
+        if (['quantity', 'unitPrice', 'discount'].includes(field) && num(next.unitPrice) > 0) {
+          next.totalPrice = (Math.round((num(next.quantity || 1) * num(next.unitPrice) - num(next.discount)) * 100) / 100).toFixed(2);
+        }
+        return next;
+      })
+    }));
   const removeItem = (key) => setDraft(d => ({ ...d, items: d.items.filter(i => i.key !== key) }));
   const addItem = () => setDraft(d => ({
     ...d,
     items: [...d.items, {
       key: crypto.randomUUID(), rawName: '', name: '', foodCategory: 'Altro',
-      quantity: 1, unit: 'pz', unitPrice: '', totalPrice: ''
+      quantity: 1, unit: 'pz', unitPrice: '', discount: '', totalPrice: ''
     }]
   }));
 
@@ -187,6 +197,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
           ...i,
           quantity: num(i.quantity) || 1,
           unitPrice: num(i.unitPrice),
+          discount: num(i.discount) > 0 ? num(i.discount) : null,
           totalPrice: num(i.totalPrice),
         })),
       });
@@ -316,7 +327,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
             <tr style={{ textAlign: 'left' }}>
               <th>Prodotto</th><th>Tipo</th><th style={{ width: '95px' }}>Qtà</th>
               <th style={{ width: '105px' }}>Unità</th><th style={{ width: '105px' }}>Prezzo unit.</th>
-              <th style={{ width: '105px' }}>Importo</th><th style={{ width: '40px' }} />
+              <th style={{ width: '95px' }}>Sconto</th><th style={{ width: '105px' }}>Pagato</th><th style={{ width: '40px' }} />
             </tr>
           </thead>
           <tbody>
@@ -340,7 +351,9 @@ const ScanTab = ({ setMessage, onSaved }) => {
                 </td>
                 <td data-label="Prezzo unit." style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.unitPrice ?? ''}
                   onChange={(e) => setItem(i.key, 'unitPrice', e.target.value)} /></td>
-                <td data-label="Importo" style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.totalPrice ?? ''}
+                <td data-label="Sconto" style={cell}><input type="number" step="0.01" min="0" className="form-input" style={compact} value={i.discount || ''}
+                  placeholder="0" onChange={(e) => setItem(i.key, 'discount', e.target.value)} /></td>
+                <td data-label="Pagato" style={cell}><input type="number" step="0.01" className="form-input" style={compact} value={i.totalPrice ?? ''}
                   onChange={(e) => setItem(i.key, 'totalPrice', e.target.value)} /></td>
                 <td className="cell-del" style={cell}>
                   <button className="btn-icon" aria-label="Rimuovi riga" onClick={() => removeItem(i.key)}
@@ -431,8 +444,22 @@ const ReceiptsTab = ({ setMessage }) => {
                   <tr key={i.id}>
                     <td style={{ padding: '0.3rem 0' }}>{i.name}</td>
                     <td className="text-muted text-sm">{i.foodCategory}</td>
-                    <td className="text-muted text-sm">{Number(i.quantity)} {i.unit} × {eur(i.unitPrice)}</td>
-                    <td style={{ textAlign: 'right' }}><PrivacyMask>{eur(i.totalPrice)}</PrivacyMask></td>
+                    <td className="text-muted text-sm">
+                      {Number(i.quantity)} {i.unit} × {eur(i.unitPrice)}
+                      {Number(i.discount) > 0 && (
+                        <span style={{ color: 'var(--success)', marginLeft: '0.5rem' }}>
+                          sconto -{eur(i.discount)}{Number(i.quantity) > 1 && ` · ${eur(Number(i.totalPrice) / Number(i.quantity))}/${i.unit}`}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {Number(i.discount) > 0 && (
+                        <span className="text-muted text-sm" style={{ textDecoration: 'line-through', marginRight: '0.5rem' }}>
+                          <PrivacyMask>{eur(Number(i.totalPrice) + Number(i.discount))}</PrivacyMask>
+                        </span>
+                      )}
+                      <PrivacyMask>{eur(i.totalPrice)}</PrivacyMask>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -467,7 +494,8 @@ const ProductsTab = () => {
   return (
     <div className="glass-panel" style={{ padding: '1.5rem' }}>
       <input className="form-input" placeholder="Cerca un prodotto…" value={search}
-        onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: '1rem', maxWidth: '360px' }} />
+        onChange={(e) => setSearch(e.target.value)} style={{ marginBottom: '0.5rem', maxWidth: '360px' }} />
+      <p className="text-muted text-sm" style={{ marginBottom: '1rem' }}>Prezzi per unità effettivamente pagati, sconti compresi.</p>
       <div style={{ overflowX: 'auto' }}>
         <table className="products-table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '760px' }}>
           <thead>

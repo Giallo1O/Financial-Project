@@ -47,6 +47,8 @@ services:
       # Lettura scontrini con Claude: imposta ANTHROPIC_API_KEY in .env
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-opus-5-5}
+      # Chiave per cifrare i segreti nel database (collegamento ad Home Assistant), vedi README
+      - APP_SECRET_KEY=${APP_SECRET_KEY:-}
     depends_on:
       postgres-transactions:
         condition: service_healthy

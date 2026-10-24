@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -47,7 +48,8 @@ class ShoppingServiceTest {
 	private final ShoppingItemRepository items = mock(ShoppingItemRepository.class);
 	private final ReceiptItemRepository receiptItems = mock(ReceiptItemRepository.class);
 	private final ReceiptService receiptService = mock(ReceiptService.class);
-	private final ShoppingService service = new ShoppingService(lists, members, items, receiptItems, receiptService);
+	private final HomeAssistantTodo ha = mock(HomeAssistantTodo.class); // nessuno collegato salvo nei test della lista di casa
+	private final ShoppingService service = new ShoppingService(lists, members, items, receiptItems, receiptService, ha);
 
 	private final UUID andrea = UUID.randomUUID();
 	private final UUID giulia = UUID.randomUUID();
@@ -277,5 +279,40 @@ class ShoppingServiceTest {
 
 		assertEquals("Latte 1L", s.get(0).name()); // quello da ricomprare viene per primo
 		assertEquals(List.of("Latte 1L", "Pasta", "Banane"), s.stream().map(ShoppingSuggestion::name).toList()); // poi i piu' frequenti
+	}
+
+	@Test
+	void homeAssistantItemTextCarriesQuantityAndUnit() {
+		var latte = HomeAssistantTodo.Text.parse("Latte (2 l)");
+		assertEquals("Latte", latte.name());
+		assertEquals(0, new BigDecimal("2").compareTo(latte.quantity()));
+		assertEquals("l", latte.unit());
+		assertEquals(0, new BigDecimal("1.5").compareTo(HomeAssistantTodo.Text.parse("Mele (1,5 kg)").quantity()));
+		var voce = HomeAssistantTodo.Text.parse("pane"); // detto a voce
+		assertEquals("pane", voce.name());
+		assertEquals("pz", voce.unit());
+		assertEquals("Gnocchi (patate)", HomeAssistantTodo.Text.parse("Gnocchi (patate)").name());
+		assertEquals("Pane", new HomeAssistantTodo.Text("Pane", BigDecimal.ONE, "pz").format());
+		assertEquals("Mele (1,5 kg)", new HomeAssistantTodo.Text("Mele", new BigDecimal("1.50"), "kg").format());
+	}
+
+	@Test
+	void homeAssistantListComesFirstAndAddingMergesWithAnOpenItem() {
+		when(ha.enabled(andrea)).thenReturn(true);
+		when(ha.items(andrea)).thenReturn(List.of(new HomeAssistantTodo.Item("u1", "Latte (2 l)", false),
+				new HomeAssistantTodo.Item("u2", "Uova", true)));
+
+		ShoppingListView first = service.lists(andrea).get(0);
+		assertTrue(first.homeAssistant());
+		assertEquals(1, first.openItems());
+		assertEquals("Latte", service.items(andrea, ShoppingService.HA_LIST_ID).get(0).name());
+
+		service.addItem(andrea, "andrea", ShoppingService.HA_LIST_ID, "latte", BigDecimal.ONE, "l");
+		verify(ha).update(andrea, "u1", "Latte (3 l)", null);
+		service.addItem(andrea, "andrea", ShoppingService.HA_LIST_ID, "Pane", null, null);
+		verify(ha).add(andrea, "Pane");
+		service.update(andrea, ShoppingService.HA_LIST_ID, ShoppingService.haId("u1"), true, null);
+		verify(ha).update(andrea, "u1", null, true);
+		assertTrue(service.lists(giulia).stream().noneMatch(ShoppingListView::homeAssistant)); // chi non ha collegato HA non la vede
 	}
 }

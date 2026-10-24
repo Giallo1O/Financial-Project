@@ -16,7 +16,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/** Una riga di scontrino. Gli sconti sono righe con totalPrice negativo. */
+/**
+ * Una riga di scontrino. totalPrice e' quanto pagato per la riga, sconto gia' tolto; discount e' lo sconto sull'articolo
+ * (positivo). Righe con totalPrice negativo restano solo per sconti sul totale non legati a un articolo.
+ */
 @Entity
 @Table(name = "receipt_items")
 @Getter
@@ -55,4 +58,8 @@ public class ReceiptItem {
 
 	@Column(name = "total_price", precision = 12, scale = 2)
 	private BigDecimal totalPrice;
+
+	/** Sconto applicato a questo articolo, in euro (positivo); null se nessuno. */
+	@Column(precision = 12, scale = 2)
+	private BigDecimal discount;
 }

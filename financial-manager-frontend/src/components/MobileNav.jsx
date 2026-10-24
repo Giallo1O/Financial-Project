@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, Camera, PiggyBank, Menu, X, BarChart3, CalendarClock,
-  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, Landmark, Users
+  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, Landmark, Users, User
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -25,6 +25,7 @@ const MORE = [
   { to: '/comparisons', label: 'Confronti', icon: TrendingUp },
   { to: '/categories', label: 'Categorie', icon: Tag },
   { to: '/import', label: 'Importa CSV', icon: Upload },
+  { to: '/profile', label: 'Profilo', icon: User },
 ];
 
 const MobileNav = () => {

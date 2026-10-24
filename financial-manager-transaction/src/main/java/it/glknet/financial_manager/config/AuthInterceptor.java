@@ -53,7 +53,8 @@ public class AuthInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(this).addPathPatterns("/api/**");
+		registry.addInterceptor(this).addPathPatterns("/api/**")
+				.excludePathPatterns(it.glknet.financial_manager.controller.HomeAssistantController.CALLBACK_PATH);
 	}
 
 	@Override

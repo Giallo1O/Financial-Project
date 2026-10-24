@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, BarChart3, LogOut, Wallet,
-  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock, ShoppingCart, ListChecks, Landmark, Users
+  Tag, Upload, PiggyBank, TrendingUp, Eye, EyeOff, Target, CalendarClock, ShoppingCart, ListChecks, Landmark, Users, User
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -92,6 +92,11 @@ const Sidebar = () => {
         <NavLink to="/import" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <Upload size={20} />
           <span>Import CSV</span>
+        </NavLink>
+
+        <NavLink to="/profile" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <User size={20} />
+          <span>Profilo</span>
         </NavLink>
       </nav>
 

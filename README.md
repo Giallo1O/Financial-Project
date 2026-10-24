@@ -70,9 +70,19 @@ Un database PostgreSQL per servizio. Nessun broker di messaggi.
 
 1. Crea una chiave API su https://console.anthropic.com e mettila in `.env` come `ANTHROPIC_API_KEY` (vedi `.env.example`). Il server deve poter raggiungere `api.anthropic.com`; senza chiave l'app funziona, solo la lettura scontrini è disattivata.
 2. Vai su **Spesa → Nuovo scontrino** e carica una o più foto (fino a 4, per scontrini lunghi) o un PDF. Il browser ridimensiona le foto e applica la rotazione prima dell'invio.
-3. Controlla la bozza: l'app avvisa se la somma delle righe non coincide con il totale. Gli sconti sono righe negative. Se esiste già un movimento in banca con lo stesso importo e una data vicina (entro 3 giorni), il riquadro "Questo acquisto sembra già nei tuoi movimenti" lo propone: collegandolo non si crea una seconda spesa (la categoria scelta viene applicata solo se il movimento non ne ha una). Altrimenti, salvando si crea la transazione di spesa (categoria a scelta). Lo stesso scontrino non si può salvare due volte. Eliminando uno scontrino collegato, il movimento in banca resta.
+3. Controlla la bozza: l'app avvisa se la somma delle righe non coincide con il totale. Gli sconti stanno sulla riga del prodotto (colonna «Sconto», «Pagato» si ricalcola); restano righe negative a parte solo gli sconti sul totale, come i buoni. Prezzi e confronti tra negozi usano il prezzo pagato, sconti compresi. Se esiste già un movimento in banca con lo stesso importo e una data vicina (entro 3 giorni), il riquadro "Questo acquisto sembra già nei tuoi movimenti" lo propone: collegandolo non si crea una seconda spesa (la categoria scelta viene applicata solo se il movimento non ne ha una). Altrimenti, salvando si crea la transazione di spesa (categoria a scelta). Lo stesso scontrino non si può salvare due volte. Eliminando uno scontrino collegato, il movimento in banca resta.
 
 Il modello è `claude-opus-5-5` per default (`ANTHROPIC_MODEL` per cambiarlo, es. `claude-sonnet-5-5` o `claude-haiku-5-5` per costare meno: conviene confrontarli su scontrini reali). Il costo per scontrino non è ancora stato misurato su scontrini veri.
+
+## Lista della spesa di Home Assistant
+
+Ogni persona può collegare **il proprio account Home Assistant** da **Profilo → Home Assistant**: scrive l'indirizzo di HA (lo stesso che apre nel browser), preme **Collega** e si apre la pagina di login di Home Assistant. Dopo il login, la lista della spesa scelta (di solito la Shopping list, `todo.lista_della_spesa`) compare per prima in **Lista spesa** come **"Casa (Home Assistant)"**: è letta e modificata in diretta con i servizi `todo.*` di HA, senza copie, quindi quello che cambi da FinManager si vede nell'app di HA e negli assistenti vocali, e viceversa.
+
+- **Come funziona il collegamento:** è l'OAuth2 di Home Assistant (lo stesso delle app ufficiali). `client_id` è l'indirizzo di FinManager e HA rimanda a `/ha-callback` con un codice monouso; il server lo scambia con un refresh token, salvato **cifrato** (AES-GCM con `APP_SECRET_KEY`), da cui ricava token di accesso di 30 minuti. FinManager non vede mai la password di HA.
+- **Scollegare:** dal Profilo (revoca anche il token in HA). Se il token viene revocato da HA (Profilo di HA → Sicurezza → Token di aggiornamento), il Profilo chiede di ricollegare.
+- **Rete:** l'indirizzo di HA deve essere raggiungibile sia dal browser sia dal server di FinManager.
+- La quantità sta nel testo della voce: "Latte (2 l)". Le voci senza parentesi (es. dette a voce) valgono 1 pz. Prezzi e "dove costa meno" funzionano come nelle altre liste.
+- **Serve `APP_SECRET_KEY`** (32 byte in base64, `openssl rand -base64 32`). Senza, il Profilo dice che il collegamento non è disponibile. Se la chiave cambia, gli account vanno ricollegati.
 
 ## Avvio in locale (Docker Compose)
 
@@ -184,7 +194,7 @@ Nella barra in basso del telefono c'è **Lista** (il Budget è passato in *Altro
 
 ## Backup e ripristino
 
-Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 03:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
+Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 01:30 ora italiana, prima del backup notturno di Proxmox su PBS delle 02:00) crea ogni giorno `transactions-<data>.sql.gz` e `users-<data>.sql.gz` e tiene gli ultimi 14 giorni: in `./backups` con compose, nel volume `backups-pvc` su Kubernetes.
 
 **Sono sullo stesso disco del server:** se il disco si rompe, si perdono anche i backup. Copia ogni tanto la cartella su un altro supporto (NAS, disco esterno, altro PC).
 
