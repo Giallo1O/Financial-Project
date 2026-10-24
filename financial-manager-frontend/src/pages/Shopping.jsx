@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ListChecks, Plus, Minus, Trash2, Check, Users, Copy, X, RefreshCw, LogIn, Share2, Home
 } from 'lucide-react';
@@ -49,7 +50,7 @@ const Shopping = () => {
   const reloadItems = useCallback(async () => {
     if (!activeKey) return;
     try { setItems(await fetchShoppingItems(activeKey)); setHaError(''); } catch (err) {
-      if (err.status === 502) setHaError(err.message); // altrimenti si riprova al prossimo giro
+      if (err.status === 502 || err.status === 409) setHaError(err.message); // altrimenti si riprova al prossimo giro
     }
   }, [activeKey]);
 
@@ -273,7 +274,7 @@ const Shopping = () => {
                 <span><Home size={16} /> Lista della spesa di Home Assistant</span>
               </div>
               <p className="text-muted text-sm" style={{ marginTop: '0.6rem' }}>
-                È la stessa lista dell'app di Home Assistant e dell'assistente vocale («aggiungi il latte alla spesa»): ciò che cambi qui si vede subito anche lì, e viceversa.
+                È la stessa lista dell'app di Home Assistant e dell'assistente vocale («aggiungi il latte alla spesa»): ciò che cambi qui si vede subito anche lì, e viceversa. Collegamento e scelta della lista: <Link to="/profile">Profilo</Link>.
               </p>
               {haError && <p className="text-sm shop-danger" role="alert" style={{ marginTop: '0.4rem' }}>{haError}</p>}
             </section>

@@ -48,7 +48,7 @@ class ShoppingServiceTest {
 	private final ShoppingItemRepository items = mock(ShoppingItemRepository.class);
 	private final ReceiptItemRepository receiptItems = mock(ReceiptItemRepository.class);
 	private final ReceiptService receiptService = mock(ReceiptService.class);
-	private final HomeAssistantTodo ha = mock(HomeAssistantTodo.class); // spento salvo nei test della lista di casa
+	private final HomeAssistantTodo ha = mock(HomeAssistantTodo.class); // nessuno collegato salvo nei test della lista di casa
 	private final ShoppingService service = new ShoppingService(lists, members, items, receiptItems, receiptService, ha);
 
 	private final UUID andrea = UUID.randomUUID();
@@ -298,8 +298,8 @@ class ShoppingServiceTest {
 
 	@Test
 	void homeAssistantListComesFirstAndAddingMergesWithAnOpenItem() {
-		when(ha.enabled()).thenReturn(true);
-		when(ha.items()).thenReturn(List.of(new HomeAssistantTodo.Item("u1", "Latte (2 l)", false),
+		when(ha.enabled(andrea)).thenReturn(true);
+		when(ha.items(andrea)).thenReturn(List.of(new HomeAssistantTodo.Item("u1", "Latte (2 l)", false),
 				new HomeAssistantTodo.Item("u2", "Uova", true)));
 
 		ShoppingListView first = service.lists(andrea).get(0);
@@ -308,10 +308,11 @@ class ShoppingServiceTest {
 		assertEquals("Latte", service.items(andrea, ShoppingService.HA_LIST_ID).get(0).name());
 
 		service.addItem(andrea, "andrea", ShoppingService.HA_LIST_ID, "latte", BigDecimal.ONE, "l");
-		verify(ha).update("u1", "Latte (3 l)", null);
+		verify(ha).update(andrea, "u1", "Latte (3 l)", null);
 		service.addItem(andrea, "andrea", ShoppingService.HA_LIST_ID, "Pane", null, null);
-		verify(ha).add("Pane");
+		verify(ha).add(andrea, "Pane");
 		service.update(andrea, ShoppingService.HA_LIST_ID, ShoppingService.haId("u1"), true, null);
-		verify(ha).update("u1", null, true);
+		verify(ha).update(andrea, "u1", null, true);
+		assertTrue(service.lists(giulia).stream().noneMatch(ShoppingListView::homeAssistant)); // chi non ha collegato HA non la vede
 	}
 }

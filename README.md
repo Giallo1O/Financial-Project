@@ -70,12 +70,13 @@ Il modello è `claude-opus-5-5` per default (`ANTHROPIC_MODEL` per cambiarlo, es
 
 ## Lista della spesa di Home Assistant
 
-Se imposti `HA_URL` e `HA_TOKEN`, nella pagina **Lista spesa** compare per prima la lista **"Casa (Home Assistant)"**: è la Shopping list di HA (`todo.lista_della_spesa`, cambiabile con `HA_SHOPPING_ENTITY`), letta e modificata in diretta con i servizi `todo.*` di HA, senza copie. Quello che aggiungi, spunti o togli da FinManager si vede nell'app di HA e negli assistenti vocali, e viceversa.
+Ogni persona può collegare **il proprio account Home Assistant** da **Profilo → Home Assistant**: scrive l'indirizzo di HA (lo stesso che apre nel browser), preme **Collega** e si apre la pagina di login di Home Assistant. Dopo il login, la lista della spesa scelta (di solito la Shopping list, `todo.lista_della_spesa`) compare per prima in **Lista spesa** come **"Casa (Home Assistant)"**: è letta e modificata in diretta con i servizi `todo.*` di HA, senza copie, quindi quello che cambi da FinManager si vede nell'app di HA e negli assistenti vocali, e viceversa.
 
-- La quantità sta nel testo della voce: "Latte (2 l)". Le voci senza parentesi (es. dette a voce) valgono 1 pz.
-- Prezzi e "dove costa meno" funzionano come nelle altre liste; niente codici di invito (la lista di HA è già di tutta la casa).
-- Il token è di un utente HA dedicato (Impostazioni → Persone → aggiungi persona `finmanager`, poi dal suo profilo → Sicurezza → Token di accesso a lunga durata). Su Kubernetes va nel Secret `finmanager-ha` (chiavi `url` e `token`).
-- Se HA non risponde, la lista resta visibile con un avviso; le altre liste funzionano normalmente.
+- **Come funziona il collegamento:** è l'OAuth2 di Home Assistant (lo stesso delle app ufficiali). `client_id` è l'indirizzo di FinManager e HA rimanda a `/ha-callback` con un codice monouso; il server lo scambia con un refresh token, salvato **cifrato** (AES-GCM con `APP_SECRET_KEY`), da cui ricava token di accesso di 30 minuti. FinManager non vede mai la password di HA.
+- **Scollegare:** dal Profilo (revoca anche il token in HA). Se il token viene revocato da HA (Profilo di HA → Sicurezza → Token di aggiornamento), il Profilo chiede di ricollegare.
+- **Rete:** l'indirizzo di HA deve essere raggiungibile sia dal browser sia dal server di FinManager.
+- La quantità sta nel testo della voce: "Latte (2 l)". Le voci senza parentesi (es. dette a voce) valgono 1 pz. Prezzi e "dove costa meno" funzionano come nelle altre liste.
+- **Serve `APP_SECRET_KEY`** (32 byte in base64, `openssl rand -base64 32`). Senza, il Profilo dice che il collegamento non è disponibile. Se la chiave cambia, gli account vanno ricollegati.
 
 ## Avvio in locale (Docker Compose)
 

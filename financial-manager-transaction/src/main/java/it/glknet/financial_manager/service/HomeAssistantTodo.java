@@ -6,23 +6,26 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
+import it.glknet.financial_manager.model.HomeAssistantLink;
+
 /**
  * La lista della spesa di Home Assistant (un'entita' todo, di solito la Shopping list), letta e scritta con i servizi
- * todo.* dell'API REST. Nessuna copia locale: HA e' l'unica fonte, cosi' voce, app di HA e FinManager vedono le
- * stesse voci. Attiva solo se sono impostati URL e token.
+ * todo.* dell'API REST con l'account HA collegato dalla persona (vedi {@link HomeAssistantAuth}). Nessuna copia
+ * locale: HA e' l'unica fonte, cosi' voce, app di HA e FinManager vedono le stesse voci.
  */
 @Component
 public class HomeAssistantTodo {
@@ -56,34 +59,29 @@ public class HomeAssistantTodo {
 		}
 	}
 
-	private final RestClient client;
-	private final String entity;
+	private final HomeAssistantAuth auth;
+	private final RestClient http;
 
-	public HomeAssistantTodo(@Value("${home-assistant.url:}") String url, @Value("${home-assistant.token:}") String token,
-			@Value("${home-assistant.shopping-entity:todo.lista_della_spesa}") String entity) {
-		this.entity = entity;
-		if (url.isBlank() || token.isBlank()) {
-			this.client = null;
-			return;
-		}
+	public HomeAssistantTodo(HomeAssistantAuth auth) {
+		this.auth = auth;
 		SimpleClientHttpRequestFactory timeouts = new SimpleClientHttpRequestFactory();
 		timeouts.setConnectTimeout(Duration.ofSeconds(3));
 		timeouts.setReadTimeout(Duration.ofSeconds(8));
-		this.client = RestClient.builder().baseUrl(url.replaceAll("/+$", "")).requestFactory(timeouts)
-				.defaultHeader("Authorization", "Bearer " + token).build();
+		this.http = RestClient.builder().requestFactory(timeouts).build();
 	}
 
-	public boolean enabled() {
-		return client != null;
+	/** La persona ha collegato il suo account HA e scelto la lista della spesa. */
+	public boolean enabled(UUID userId) {
+		return auth.usableLink(userId).isPresent();
 	}
 
-	/** Voci da comprare e gia' prese, nell'ordine di Home Assistant. */
 	@SuppressWarnings("unchecked")
-	public List<Item> items() {
+	public List<Item> items(UUID userId) {
+		String entity = entity(userId);
 		Map<String, Object> body = new HashMap<>();
 		body.put("entity_id", entity);
 		body.put("status", List.of("needs_action", "completed"));
-		Map<String, Object> res = call("get_items?return_response", body);
+		Map<String, Object> res = call(userId, "get_items?return_response", body);
 		Map<String, Object> byEntity = (Map<String, Object>) (res == null ? null : res.get("service_response"));
 		Map<String, Object> list = (Map<String, Object>) (byEntity == null ? null : byEntity.get(entity));
 		List<Item> out = new ArrayList<>();
@@ -95,14 +93,14 @@ public class HomeAssistantTodo {
 		return out;
 	}
 
-	public void add(String summary) {
-		call("add_item", Map.of("entity_id", entity, "item", summary));
+	public void add(UUID userId, String summary) {
+		call(userId, "add_item", Map.of("entity_id", entity(userId), "item", summary));
 	}
 
 	/** rename e completed null = non cambiano. */
-	public void update(String uid, String rename, Boolean completed) {
+	public void update(UUID userId, String uid, String rename, Boolean completed) {
 		Map<String, Object> body = new HashMap<>();
-		body.put("entity_id", entity);
+		body.put("entity_id", entity(userId));
 		body.put("item", uid);
 		if (rename != null) {
 			body.put("rename", rename);
@@ -110,24 +108,33 @@ public class HomeAssistantTodo {
 		if (completed != null) {
 			body.put("status", completed ? "completed" : "needs_action");
 		}
-		call("update_item", body);
+		call(userId, "update_item", body);
 	}
 
-	public void remove(String uid) {
-		call("remove_item", Map.of("entity_id", entity, "item", List.of(uid)));
+	public void remove(UUID userId, String uid) {
+		call(userId, "remove_item", Map.of("entity_id", entity(userId), "item", List.of(uid)));
 	}
 
-	public void removeCompleted() {
-		call("remove_completed_items", Map.of("entity_id", entity));
+	public void removeCompleted(UUID userId) {
+		call(userId, "remove_completed_items", Map.of("entity_id", entity(userId)));
+	}
+
+	private String entity(UUID userId) {
+		return auth.usableLink(userId).map(HomeAssistantLink::getEntityId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+						"Collega Home Assistant e scegli la lista della spesa dal Profilo"));
 	}
 
 	@SuppressWarnings("unchecked")
-	private Map<String, Object> call(String service, Map<String, Object> body) {
-		if (client == null) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Home Assistant non configurato");
-		}
+	private Map<String, Object> call(UUID userId, String service, Map<String, Object> body) {
+		String baseUrl = auth.usableLink(userId).map(HomeAssistantLink::getBaseUrl)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Home Assistant non collegato"));
 		try {
-			return client.post().uri("/api/services/todo/" + service).body(body).retrieve().body(Map.class);
+			return http.post().uri(baseUrl + "/api/services/todo/" + service)
+					.header("Authorization", "Bearer " + auth.accessToken(userId)).body(body).retrieve().body(Map.class);
+		} catch (HttpClientErrorException.Unauthorized e) {
+			auth.forgetAccess(userId); // token non piu' valido: al prossimo giro se ne chiede uno nuovo
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Home Assistant ha rifiutato l'accesso: riprova");
 		} catch (RestClientException e) {
 			log.warn("Home Assistant todo.{} fallito: {}", service, e.getMessage());
 			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
