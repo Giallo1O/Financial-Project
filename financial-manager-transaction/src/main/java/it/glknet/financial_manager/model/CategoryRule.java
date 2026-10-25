@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,7 +19,10 @@ import lombok.Setter;
 
 /** "Se la descrizione contiene questa parola chiave, la categoria e' questa" (per utente). */
 @Entity
-@Table(name = "category_rules", uniqueConstraints = @UniqueConstraint(columnNames = { "user_id", "keyword" }))
+// Una parola chiave puo' avere una regola per le uscite e una per le entrate: l'unicita' (utente, parola, tipo) la
+// garantisce CategoryRuleService.save (il tipo e' quello della categoria). Il vecchio vincolo unico (utente, parola)
+// lo toglie CategoryRulesConstraintFix all'avvio.
+@Table(name = "category_rules")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -95,7 +95,8 @@ public class RecurringTransactionService {
                 effectiveDate,
                 recurring.getAccountId()
         );
-        Transaction createdTx = transactionService.createTransaction(txRequest);
+        // se la banca ha gia' portato questa spesa (estratto conto importato), la collega invece di contarla due volte
+        Transaction createdTx = transactionService.createForRecurring(txRequest, recurring.getId());
 
         LocalDate baseDate = recurring.getNextDueDate() != null ? recurring.getNextDueDate() : effectiveDate;
         LocalDate nextMonth = baseDate.plusMonths(1);

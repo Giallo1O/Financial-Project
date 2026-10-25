@@ -91,16 +91,22 @@ public class CategoryRuleService {
 		return rules.findByUserId(userId);
 	}
 
-	/** Aggiunge o aggiorna la regola per quella parola chiave. */
+	/**
+	 * Aggiunge o aggiorna la regola per quella parola chiave e quel tipo: la stessa parola puo' avere una regola per le
+	 * uscite e una per le entrate (es. una persona a cui mandi e da cui ricevi soldi).
+	 */
 	@Transactional
 	public CategoryRule save(UUID userId, String keyword, UUID categoryId) {
 		String normalized = TextKeywords.normalize(keyword);
 		if (normalized.length() < 3) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La parola chiave deve avere almeno 3 caratteri");
 		}
-		categories.findById(categoryId).filter(c -> userId.equals(c.getUserId()))
+		Category chosen = categories.findById(categoryId).filter(c -> userId.equals(c.getUserId()))
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria non valida"));
-		CategoryRule rule = rules.findByUserId(userId).stream().filter(r -> r.getKeyword().equals(normalized))
+		Map<UUID, Category> cats = categoriesOf(userId);
+		CategoryRule rule = rules.findByUserId(userId).stream()
+				.filter(r -> r.getKeyword().equals(normalized) && cats.containsKey(r.getCategoryId())
+						&& cats.get(r.getCategoryId()).isExpense() == chosen.isExpense())
 				.findFirst().orElseGet(() -> CategoryRule.builder().userId(userId).keyword(normalized).build());
 		rule.setCategoryId(categoryId);
 		return rules.save(rule);
@@ -175,16 +181,19 @@ public class CategoryRuleService {
 			if (c == null || keyword == null || c.isExpense() != (t.getType() == TransactionType.USCITA)) {
 				continue;
 			}
-			counts.computeIfAbsent(keyword, k -> new HashMap<>()).merge(c.getId(), 1, Integer::sum);
+			counts.computeIfAbsent(keyword + "|" + c.isExpense(), k -> new HashMap<>()).merge(c.getId(), 1, Integer::sum);
 		}
-		List<String> existing = rules.findByUserId(userId).stream().map(CategoryRule::getKeyword).toList();
+		// regole esistenti per parola chiave e tipo (uscita/entrata)
+		List<String> existing = rules.findByUserId(userId).stream().filter(r -> cats.containsKey(r.getCategoryId()))
+				.map(r -> r.getKeyword() + "|" + cats.get(r.getCategoryId()).isExpense()).toList();
 		int created = 0;
 		for (Map.Entry<String, Map<UUID, Integer>> e : counts.entrySet()) {
 			int total = e.getValue().values().stream().mapToInt(Integer::intValue).sum();
 			Map.Entry<UUID, Integer> top = e.getValue().entrySet().stream().max(Map.Entry.comparingByValue())
 					.orElseThrow();
 			if (total >= 2 && top.getValue() >= 0.8 * total && !existing.contains(e.getKey())) {
-				rules.save(CategoryRule.builder().userId(userId).keyword(e.getKey()).categoryId(top.getKey()).build());
+				String keyword = e.getKey().substring(0, e.getKey().lastIndexOf('|'));
+				rules.save(CategoryRule.builder().userId(userId).keyword(keyword).categoryId(top.getKey()).build());
 				created++;
 			}
 		}

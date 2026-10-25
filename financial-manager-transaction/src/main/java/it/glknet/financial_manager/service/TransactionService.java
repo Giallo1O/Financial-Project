@@ -107,6 +107,17 @@ public class TransactionService {
 	 *   perche' ha il dettaglio dei prodotti. Ogni scontrino copre al massimo una riga.
 	 */
 	public List<String> findDuplicates(UUID userId, List<TransactionRequest> rows) {
+		return analyze(userId, rows).stream().map(Match::note).toList();
+	}
+
+	/** Esito del controllo di una riga: null se nuova; recurring e' il movimento di una ricorrenza da aggiornare. */
+	private record Match(String note, Transaction recurring) {
+	}
+
+	/** Giorni di scarto tra la scadenza di una ricorrenza e l'addebito vero in banca. */
+	public static final int RECURRING_DAYS = 5;
+
+	private List<Match> analyze(UUID userId, List<TransactionRequest> rows) {
 		LocalDate min = rows.stream().map(TransactionRequest::transactionDate).filter(Objects::nonNull)
 				.min(Comparator.naturalOrder()).orElse(null);
 		LocalDate max = rows.stream().map(TransactionRequest::transactionDate).filter(Objects::nonNull)
@@ -114,13 +125,24 @@ public class TransactionService {
 		Map<String, Integer> existing = new HashMap<>();
 		// Stessa data, importo e tipo ma descrizione diversa (es. "Esselunga" scritto a mano, "Esselunga Milano" in banca)
 		Map<String, List<String>> sameAmount = new HashMap<>();
+		// Movimenti creati da una ricorrenza: la banca li addebita qualche giorno dopo, e per le bollette con un altro importo
+		List<Transaction> fromRecurring = new ArrayList<>();
 		List<Receipt> coveringReceipts = new ArrayList<>();
 		if (min != null) {
-			for (Transaction t : repository.findByUserIdAndTransactionDateBetween(userId, min, max)) {
+			for (Transaction t : repository.findByUserIdAndTransactionDateBetween(userId, min.minusDays(RECURRING_DAYS),
+					max.plusDays(RECURRING_DAYS))) {
+				if (t.getRecurringId() != null) {
+					fromRecurring.add(t);
+				}
+				if (t.getTransactionDate().isBefore(min) || t.getTransactionDate().isAfter(max)) {
+					continue;
+				}
 				existing.merge(key(t.getTransactionDate(), t.getAmount(), t.getType(), t.getDescription()), 1,
 						Integer::sum);
-				sameAmount.computeIfAbsent(key(t.getTransactionDate(), t.getAmount(), t.getType(), ""),
-						k -> new ArrayList<>()).add(t.getDescription() == null ? "" : t.getDescription());
+				if (t.getRecurringId() == null) {
+					sameAmount.computeIfAbsent(key(t.getTransactionDate(), t.getAmount(), t.getType(), ""),
+							k -> new ArrayList<>()).add(t.getDescription() == null ? "" : t.getDescription());
+				}
 			}
 			for (Receipt r : receiptRepository.findByUserIdAndPurchaseDateBetween(userId, min.minusDays(MATCH_DAYS),
 					max.plusDays(MATCH_DAYS))) {
@@ -129,7 +151,7 @@ public class TransactionService {
 				}
 			}
 		}
-		List<String> result = new ArrayList<>();
+		List<Match> result = new ArrayList<>();
 		for (TransactionRequest r : rows) {
 			String k = key(r.transactionDate(), r.amount(), r.type(), r.description());
 			List<String> similar = sameAmount.getOrDefault(key(r.transactionDate(), r.amount(), r.type(), ""),
@@ -139,20 +161,81 @@ public class TransactionService {
 			if (left > 0) {
 				String same = key(null, null, null, r.description());
 				similar.stream().filter(d -> key(null, null, null, d).equals(same)).findFirst().ifPresent(similar::remove);
-				result.add("Già presente");
+				result.add(new Match("Già presente", null));
+				continue;
+			}
+			Transaction recurring = closestSameSpending(fromRecurring, r.type(), r.description(), r.amount(),
+					r.transactionDate());
+			if (recurring != null) {
+				fromRecurring.remove(recurring);
+				result.add(new Match("Già registrato dalla ricorrenza \"" + recurring.getDescription() + "\" del "
+						+ recurring.getTransactionDate().format(DAY) + ": prende data e importo della banca", recurring));
 				continue;
 			}
 			if (!similar.isEmpty()) {
 				String other = similar.remove(0);
 				existing.computeIfPresent(key(r.transactionDate(), r.amount(), r.type(), other), (x, n) -> n - 1);
-				result.add("Stessa data e importo di \"" + other + "\"");
+				result.add(new Match("Stessa data e importo di \"" + other + "\"", null));
 				continue;
 			}
 			Receipt covering = r.type() == TransactionType.USCITA ? takeCoveringReceipt(coveringReceipts, r) : null;
-			result.add(covering == null ? null : "Già registrato con lo scontrino " + covering.getStoreName() + " del "
-					+ covering.getPurchaseDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+			result.add(new Match(covering == null ? null : "Già registrato con lo scontrino " + covering.getStoreName()
+					+ " del " + covering.getPurchaseDate().format(DAY), null));
 		}
 		return result;
+	}
+
+	private static final java.time.format.DateTimeFormatter DAY = java.time.format.DateTimeFormatter
+			.ofPattern("dd/MM/yyyy");
+
+	/**
+	 * Il movimento piu' vicino nel tempo (entro {@value #RECURRING_DAYS} giorni) che e' la stessa spesa: stesso tipo e
+	 * stesso esercente (parola chiave) oppure stesso importo. L'esercente basta per le bollette, che cambiano importo.
+	 */
+	private static Transaction closestSameSpending(List<Transaction> candidates, TransactionType type,
+			String description, BigDecimal amount, LocalDate date) {
+		if (date == null) {
+			return null;
+		}
+		String keyword = TextKeywords.extractKeyword(description);
+		Transaction best = null;
+		long bestGap = Long.MAX_VALUE;
+		for (Transaction t : candidates) {
+			long gap = Math.abs(java.time.temporal.ChronoUnit.DAYS.between(t.getTransactionDate(), date));
+			boolean sameMerchant = keyword != null && keyword.equals(TextKeywords.extractKeyword(t.getDescription()));
+			boolean sameAmount = amount != null && t.getAmount() != null && amount.compareTo(t.getAmount()) == 0;
+			if (t.getType() == type && gap <= RECURRING_DAYS && (sameMerchant || sameAmount) && gap < bestGap) {
+				best = t;
+				bestGap = gap;
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * Movimento di una ricorrenza (conferma manuale o automatica). Se la stessa spesa e' gia' arrivata con l'estratto
+	 * conto (entro {@value #RECURRING_DAYS} giorni dalla scadenza), collega quel movimento invece di crearne un secondo.
+	 */
+	@Transactional
+	public Transaction createForRecurring(TransactionRequest request, UUID recurringId) {
+		LocalDate date = request.transactionDate();
+		if (date != null) {
+			List<Transaction> bank = repository.findByUserIdAndTransactionDateBetween(request.userId(),
+					date.minusDays(RECURRING_DAYS), date.plusDays(RECURRING_DAYS)).stream()
+					.filter(t -> t.getRecurringId() == null).toList();
+			Transaction already = closestSameSpending(bank, request.type(), request.description(), request.amount(), date);
+			if (already != null) {
+				already.setRecurringId(recurringId);
+				if (already.getCategoryId() == null) {
+					already.setCategoryId(request.categoryId());
+				}
+				return repository.save(already);
+			}
+		}
+		validate(request);
+		return repository.save(Transaction.builder().description(request.description()).amount(request.amount())
+				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
+				.transactionDate(date).recurringId(recurringId).build());
 	}
 
 	private static Receipt takeCoveringReceipt(List<Receipt> receipts, TransactionRequest row) {
@@ -176,12 +259,25 @@ public class TransactionService {
 	/** Importa le righe non ancora presenti; le altre vengono saltate. */
 	@Transactional
 	public ImportResult importAll(UUID userId, List<TransactionRequest> rows) {
-		List<String> duplicates = findDuplicates(userId, rows);
+		List<Match> matches = analyze(userId, rows);
 		int imported = 0;
 		for (int i = 0; i < rows.size(); i++) {
-			if (duplicates.get(i) == null) {
-				createTransaction(rows.get(i));
+			Match m = matches.get(i);
+			TransactionRequest row = rows.get(i);
+			if (m.note() == null) {
+				createTransaction(row);
 				imported++;
+			} else if (m.recurring() != null) {
+				// La spesa della ricorrenza diventa quella vera della banca (data, importo, descrizione), resta collegata
+				validate(row);
+				Transaction t = m.recurring();
+				t.setAmount(row.amount());
+				t.setTransactionDate(row.transactionDate());
+				t.setDescription(row.description());
+				if (t.getCategoryId() == null) {
+					t.setCategoryId(row.categoryId());
+				}
+				repository.save(t);
 			}
 		}
 		return new ImportResult(imported, rows.size() - imported);

@@ -13,6 +13,7 @@ import {
 import AccountSelect from '../components/AccountSelect';
 import '../components/Components.css';
 import { eur } from '../utils/format';
+import RecurringSuggestions from '../components/RecurringSuggestions';
 
 const RecurringTransactions = () => {
   const [recurringList, setRecurringList] = useState([]);
@@ -241,6 +242,8 @@ const RecurringTransactions = () => {
           <span className="text-muted text-sm">Impatto mensile a regime</span>
         </div>
       </div>
+
+      <RecurringSuggestions categories={categories} onAdded={loadAllData} />
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', background: 'rgba(255,255,255,0.03)', padding: '0.4rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-glass)' }}>

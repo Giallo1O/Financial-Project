@@ -30,6 +30,14 @@ import lombok.RequiredArgsConstructor;
 public class RecurringTransactionController {
 
     private final RecurringTransactionService recurringService;
+    private final it.glknet.financial_manager.service.RecurringSuggestionService suggestionService;
+
+    /** Spese o entrate che si ripetono ogni mese nei movimenti e non hanno ancora una ricorrenza. */
+    @GetMapping("/suggestions")
+    public List<it.glknet.financial_manager.service.RecurringSuggestionService.Suggestion> suggestions(
+            @RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
+        return suggestionService.suggest(userId);
+    }
 
     @GetMapping
     public ResponseEntity<List<RecurringTransaction>> getAll(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
