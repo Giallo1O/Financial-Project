@@ -49,8 +49,25 @@ public class CsvImportService {
 	/** Conto o sottoconto della riga (N26: conto principale o uno Space). */
 	private static final List<String> ACCOUNT_COLS = List.of("account name");
 
-	/** Righe da importare e numero di spostamenti tra i propri conti/Spaces saltati. */
-	public record Parsed(List<TransactionRequest> rows, int internalTransfers) {
+	/** IBAN della controparte (N26: "Partner Iban"). */
+	private static final List<String> IBAN_COLS = List.of("partner iban", "iban controparte", "iban beneficiario");
+
+	/** Da dove arriva una riga: conto o Space, controparte e suo IBAN (vuoti se il file non li ha). */
+	public record Source(String account, String partner, String iban) {
+	}
+
+	/** Uno spostamento tra due propri conti/Spaces: non e' un movimento, ma puo' alimentare un salvadanaio. */
+	public record Internal(LocalDate date, BigDecimal amount, String account, String partner) {
+	}
+
+	/**
+	 * Righe da importare (con la loro provenienza, stesso ordine) e spostamenti tra i propri conti/Spaces, che non
+	 * diventano movimenti.
+	 */
+	public record Parsed(List<TransactionRequest> rows, List<Source> sources, List<Internal> internal) {
+		public int internalTransfers() {
+			return internal.size();
+		}
 	}
 
 	public List<TransactionRequest> parseCsv(MultipartFile file) {
@@ -67,18 +84,22 @@ public class CsvImportService {
 				all = reader.readAll();
 			}
 			if (all.isEmpty()) {
-				return new Parsed(List.of(), 0);
+				return new Parsed(List.of(), List.of(), List.of());
 			}
 			Columns cols = Columns.of(all.get(0));
 			List<String[]> rows = all.subList(1, all.size());
-			return cols.usable() ? byHeader(rows, cols) : new Parsed(byGuess(rows), 0);
+			if (cols.usable()) {
+				return byHeader(rows, cols);
+			}
+			List<TransactionRequest> guessed = byGuess(rows);
+			return new Parsed(guessed, guessed.stream().map(r -> new Source("", "", "")).toList(), List.of());
 		} catch (Exception e) {
 			log.error("Failed to parse CSV file", e);
 			throw new RuntimeException("Failed to parse CSV: " + e.getMessage());
 		}
 	}
 
-	private record Columns(int date, int amount, int in, int out, int desc, int ref, int account) {
+	private record Columns(int date, int amount, int in, int out, int desc, int ref, int account, int iban) {
 
 		static Columns of(String[] header) {
 			List<String> h = new ArrayList<>();
@@ -86,7 +107,7 @@ public class CsvImportService {
 				h.add(c == null ? "" : c.replace("﻿", "").replace("\"", "").trim().toLowerCase(Locale.ROOT));
 			}
 			return new Columns(find(h, DATE_COLS), find(h, AMOUNT_COLS), find(h, IN_COLS), find(h, OUT_COLS),
-					find(h, DESC_COLS), find(h, REF_COLS), find(h, ACCOUNT_COLS));
+					find(h, DESC_COLS), find(h, REF_COLS), find(h, ACCOUNT_COLS), find(h, IBAN_COLS));
 		}
 
 		private static int find(List<String> header, List<String> names) {
@@ -117,12 +138,9 @@ public class CsvImportService {
 			}
 		}
 		List<TransactionRequest> out = new ArrayList<>();
-		int internal = 0;
+		List<Source> sources = new ArrayList<>();
+		List<Internal> internal = new ArrayList<>();
 		for (String[] row : rows) {
-			if (!ownAccounts.isEmpty() && ownAccounts.contains(cell(row, c.desc()).toLowerCase(Locale.ROOT))) {
-				internal++;
-				continue;
-			}
 			LocalDate date = tryParseDate(cell(row, c.date()));
 			BigDecimal amount = c.amount() >= 0 ? parseAmount(cell(row, c.amount())) : null;
 			if (amount == null && (c.in() >= 0 || c.out() >= 0)) {
@@ -130,6 +148,12 @@ public class CsvImportService {
 				BigDecimal outAmount = parseAmount(cell(row, c.out()));
 				amount = (in == null ? BigDecimal.ZERO : in.abs())
 						.subtract(outAmount == null ? BigDecimal.ZERO : outAmount.abs());
+			}
+			if (!ownAccounts.isEmpty() && ownAccounts.contains(cell(row, c.desc()).toLowerCase(Locale.ROOT))) {
+				if (date != null && amount != null && amount.signum() != 0) {
+					internal.add(new Internal(date, amount, cell(row, c.account()), cell(row, c.desc())));
+				}
+				continue;
 			}
 			if (date == null || amount == null || amount.signum() == 0) {
 				continue; // righe di saldo, totali o vuote
@@ -141,8 +165,14 @@ public class CsvImportService {
 			desc = desc.replaceAll("\\s+", " "); // "BENNET        12" -> "BENNET 12"
 			out.add(new TransactionRequest(desc.isEmpty() ? "Movimento importato" : desc, amount.abs(),
 					amount.signum() > 0 ? TransactionType.ENTRATA : TransactionType.USCITA, null, null, date));
+			sources.add(new Source(cell(row, c.account()), cell(row, c.desc()), normalizeIban(cell(row, c.iban()))));
 		}
-		return new Parsed(out, internal);
+		return new Parsed(out, sources, internal);
+	}
+
+	/** IBAN senza spazi e in maiuscolo, per confrontarli. */
+	public static String normalizeIban(String iban) {
+		return iban == null ? "" : iban.replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
 	}
 
 	/** Formato sconosciuto: indovina le colonne riga per riga. */

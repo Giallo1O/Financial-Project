@@ -37,19 +37,25 @@ class CsvImportServiceTest {
 		return new CsvImportService().parseCsv(new MockMultipartFile("file", "x.csv", "text/csv", csv.getBytes()));
 	}
 
-	@Test
-	void n26UsesColumnNamesNotGuesses() {
-		List<TransactionRequest> rows = parse("""
+	private static String n26Sample() {
+		return """
 				"Booking Date","Value Date","Partner Name","Partner Iban",Type,"Payment Reference","Account Name","Amount (EUR)","Original Amount","Original Currency","Exchange Rate"
 				"2026-10-15","2026-10-15","Lidl Italia","",Presentment,"","Main Account",-23.40,"","",""
-				"2026-10-16","2026-10-16","Mario Rossi","IT60X0542811101000000123456",Credit Transfer,"Rimborso","Main Account",45.00,"","",""
+				"2026-10-16","2026-10-16","Mario Rossi","IT60 X054 2811 1010 0000 0123 456",Credit Transfer,"Rimborso","Main Account",45.00,"","",""
 				"2026-10-17","2026-10-17","Amazon US","",Presentment,"","Main Account",-18.52,-20.00,USD,1.08
 				"2026-10-18","2026-10-18","","",Direct Debit,"Netflix abbonamento","Main Account",-13.99,"","",""
-				""");
+				""";
+	}
+
+	@Test
+	void n26UsesColumnNamesNotGuesses() {
+		List<TransactionRequest> rows = parse(n26Sample());
 
 		assertEquals(4, rows.size());
 		assertEquals("Lidl Italia", rows.get(0).description());
 		assertEquals("Mario Rossi", rows.get(1).description());
+		assertEquals("IT60X0542811101000000123456", new CsvImportService()
+				.parse(new MockMultipartFile("file", "x.csv", "text/csv", n26Sample().getBytes())).sources().get(1).iban());
 		assertEquals(TransactionType.ENTRATA, rows.get(1).type());
 		assertEquals("Amazon US", rows.get(2).description());
 		assertEquals(0, new BigDecimal("18.52").compareTo(rows.get(2).amount())); // non il tasso di cambio
@@ -89,6 +95,9 @@ class CsvImportServiceTest {
 				.parse(new MockMultipartFile("file", "x.csv", "text/csv", csv.getBytes()));
 
 		assertEquals(3, parsed.internalTransfers()); // i due lati del giroconto e il trasferimento verso lo Space
+		assertEquals("Vacanze", parsed.internal().get(1).account()); // lato dello Space, +200
+		assertEquals(0, new BigDecimal("200").compareTo(parsed.internal().get(1).amount()));
+		assertEquals("Abbonamenti", parsed.sources().get(0).account()); // SPOTIFY pagato dallo Space
 		assertEquals(List.of("SPOTIFY", "BENNET 12"), parsed.rows().stream().map(TransactionRequest::description).toList());
 	}
 }

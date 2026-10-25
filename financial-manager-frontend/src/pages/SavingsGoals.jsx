@@ -5,7 +5,7 @@ import {
   Sparkles, Award
 } from 'lucide-react';
 import {
-  fetchSavingsGoals, createSavingsGoal, updateSavingsGoal,
+  fetchSavingsGoals, fetchSavingsSources, createSavingsGoal, updateSavingsGoal,
   deleteSavingsGoal, depositToSavingsGoal, withdrawFromSavingsGoal
 } from '../api';
 import '../components/Components.css';
@@ -20,6 +20,14 @@ const PRESET_COLORS = [
   '#ec4899', // pink
   '#8b5cf6'  // purple
 ];
+
+/** Campi del collegamento da inviare al server per la scelta "TIPO|chiave" del menu. */
+function sourceFields(value) {
+  if (!value) return { sourceType: null, sourceKey: null, sourceLabel: null };
+  const [type, ...rest] = value.split('|');
+  const key = rest.join('|');
+  return { sourceType: type, sourceKey: key, sourceLabel: null };
+}
 
 const SavingsGoals = () => {
   const [goals, setGoals] = useState([]);
@@ -38,6 +46,9 @@ const SavingsGoals = () => {
   // Modal State for Deposit / Withdraw
   const [actionModal, setActionModal] = useState({ open: false, type: 'deposit', goal: null });
   const [actionAmount, setActionAmount] = useState('');
+  // Collegamento a uno Space N26 o a un conto (IBAN): "TIPO|chiave", vuoto = salvadanaio gestito a mano
+  const [source, setSource] = useState('');
+  const [sources, setSources] = useState([]);
 
   useEffect(() => {
     loadGoals();
@@ -48,6 +59,7 @@ const SavingsGoals = () => {
       setLoading(true);
       const data = await fetchSavingsGoals();
       setGoals(data);
+      fetchSavingsSources().then(setSources).catch(() => setSources([]));
     } catch (err) {
       console.error('Failed to load savings goals', err);
     } finally {
@@ -63,6 +75,7 @@ const SavingsGoals = () => {
     setCurrentAmount('0');
     setTargetDate('');
     setColor(PRESET_COLORS[0]);
+    setSource('');
     setShowFormModal(true);
   };
 
@@ -74,6 +87,7 @@ const SavingsGoals = () => {
     setCurrentAmount(goal.currentAmount);
     setTargetDate(goal.targetDate || '');
     setColor(goal.color || PRESET_COLORS[0]);
+    setSource(goal.sourceType ? `${goal.sourceType}|${goal.sourceKey}` : '');
     setShowFormModal(true);
   };
 
@@ -88,7 +102,9 @@ const SavingsGoals = () => {
         targetAmount: Number(targetAmount),
         currentAmount: Number(currentAmount) || 0,
         targetDate: targetDate || null,
-        color
+        color,
+        ...sourceFields(source),
+        sourceLabel: [...sourceOptions.spaces, ...sourceOptions.ibans].find(o => o.value === source)?.text || null,
       };
 
       if (editingGoal) {
@@ -136,6 +152,18 @@ const SavingsGoals = () => {
       alert(`Errore nell'operazione: ${err.message}`);
     }
   };
+
+  // Scelte del menu "Collegato a": Spaces e IBAN visti negli import, più quello già salvato se non c'è
+  const sourceOptions = (() => {
+    const list = [...sources];
+    const current = editingGoal?.sourceType && !list.some(o => `${o.type}|${o.key}` === source)
+      ? [{ type: editingGoal.sourceType, key: editingGoal.sourceKey, label: editingGoal.sourceLabel }] : [];
+    const all = [...list, ...current];
+    return {
+      spaces: all.filter(o => o.type === 'SPACE').map(o => ({ value: `SPACE|${o.key}`, text: o.label || o.key })),
+      ibans: all.filter(o => o.type === 'IBAN').map(o => ({ value: `IBAN|${o.key}`, text: `${o.label || 'Senza nome'} (${o.key})` })),
+    };
+  })();
 
   // Aggregated stats
   const totalSaved = goals.reduce((s, g) => s + Number(g.currentAmount || 0), 0);
@@ -269,6 +297,11 @@ const SavingsGoals = () => {
                         {goal.completed && <Award size={18} color="var(--accent-secondary)" />}
                       </h3>
                       {goal.description && <p className="text-muted text-xs" style={{ margin: 0 }}>{goal.description}</p>}
+                      {goal.sourceLabel && (
+                        <p className="text-muted text-xs" style={{ margin: 0 }}>
+                          Si aggiorna con gli import: {goal.sourceType === 'SPACE' ? 'Space' : 'conto'} {goal.sourceLabel}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -416,6 +449,28 @@ const SavingsGoals = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label>Collegato a</label>
+                <select className="form-select" value={source} onChange={(e) => setSource(e.target.value)}>
+                  <option value="">Nessuno: lo aggiorni tu con Versa e Preleva</option>
+                  {sourceOptions.spaces.length > 0 && (
+                    <optgroup label="Spaces N26">
+                      {sourceOptions.spaces.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}
+                    </optgroup>
+                  )}
+                  {sourceOptions.ibans.length > 0 && (
+                    <optgroup label="Conti (IBAN)">
+                      {sourceOptions.ibans.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}
+                    </optgroup>
+                  )}
+                </select>
+                <span className="text-muted text-xs" style={{ marginTop: '0.3rem' }}>
+                  {sources.length === 0
+                    ? 'Le scelte compaiono dopo aver caricato un estratto conto in Import CSV.'
+                    : 'Con il collegamento, gli import aggiornano il salvadanaio: i bonifici verso quel conto (o gli spostamenti verso lo Space) sono versamenti, quelli in arrivo da lì prelievi.'}
+                </span>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label>Target da Raggiungere (€) *</label>
@@ -430,7 +485,7 @@ const SavingsGoals = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Importo Iniziale (€)</label>
+                  <label>{editingGoal ? 'Saldo attuale (€)' : 'Importo iniziale (€)'}</label>
                   <input
                     type="number"
                     step="0.01"

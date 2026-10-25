@@ -25,6 +25,7 @@ import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.service.CategoryRuleService;
 import it.glknet.financial_manager.service.CsvImportService;
+import it.glknet.financial_manager.service.SavingsImportService;
 import it.glknet.financial_manager.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +38,7 @@ public class TransactionController {
 	private final TransactionService service;
 	private final CsvImportService csvImportService;
 	private final CategoryRuleService ruleService;
+	private final SavingsImportService savingsImport;
 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
@@ -75,11 +77,32 @@ public class TransactionController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/**
+	 * Anteprima dell'import: movimenti da importare, versamenti/prelievi dei salvadanai collegati e numero di
+	 * spostamenti tra i propri conti/Spaces che non diventano movimenti.
+	 */
+	public record ImportPreview(List<ImportRow> rows, List<SavingsImportService.SavingsMove> savings,
+			int internalTransfers) {
+	}
+
 	@PostMapping("/parse-csv")
-	public ResponseEntity<List<ImportRow>> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+	public ResponseEntity<ImportPreview> parseCsv(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
 			@RequestParam("file") MultipartFile file) {
 		CsvImportService.Parsed parsed = csvImportService.parse(file);
-		List<TransactionRequest> rows = parsed.rows();
+		savingsImport.rememberSources(userId, parsed); // Spaces e IBAN tra cui scegliere nel salvadanaio
+		List<SavingsImportService.SavingsMove> savings = new ArrayList<>(
+				savingsImport.forInternal(userId, parsed.internal()));
+		List<SavingsImportService.RowSavings> perRow = savingsImport.forRows(userId, parsed.rows(), parsed.sources());
+		List<TransactionRequest> rows = new ArrayList<>();
+		for (int i = 0; i < parsed.rows().size(); i++) {
+			SavingsImportService.RowSavings rs = perRow.get(i);
+			if (rs != null) {
+				savings.add(rs.move());
+			}
+			if (rs == null || rs.alsoTransaction()) { // i bonifici verso il conto risparmi non sono spese
+				rows.add(parsed.rows().get(i));
+			}
+		}
 		List<String> duplicates = service.findDuplicates(userId, rows);
 		List<CategoryRuleService.Suggestion> suggestions = ruleService.suggest(userId, rows);
 		List<ImportRow> preview = new ArrayList<>();
@@ -90,9 +113,8 @@ public class TransactionController {
 					r.transactionDate(), duplicates.get(i) != null, duplicates.get(i),
 					s != null ? "Regola: " + s.keyword() : null));
 		}
-		// Spostamenti tra i propri conti/Spaces saltati dal parser: il frontend lo dice all'utente
-		return ResponseEntity.ok().header("X-Internal-Transfers", String.valueOf(parsed.internalTransfers()))
-				.body(preview);
+		savings.sort(java.util.Comparator.comparing(SavingsImportService.SavingsMove::date));
+		return ResponseEntity.ok(new ImportPreview(preview, savings, parsed.internalTransfers()));
 	}
 
 	@PostMapping("/bulk-import")

@@ -21,7 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.dto.AmountOperationRequest;
 import it.glknet.financial_manager.model.SavingsGoal;
+import it.glknet.financial_manager.model.ImportSource;
 import it.glknet.financial_manager.repository.SavingsGoalRepository;
+import it.glknet.financial_manager.repository.SavingsMovementRepository;
+import it.glknet.financial_manager.service.CsvImportService;
+import it.glknet.financial_manager.service.SavingsImportService;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -30,6 +35,32 @@ import lombok.RequiredArgsConstructor;
 public class SavingsGoalController {
 
     private final SavingsGoalRepository savingsGoalRepository;
+    private final SavingsImportService savingsImport;
+    private final SavingsMovementRepository movements;
+
+    /** Spaces e IBAN visti negli estratti conto: le scelte per collegare un salvadanaio. */
+    @GetMapping("/sources")
+    public List<ImportSource> sources(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
+        return savingsImport.sources(userId);
+    }
+
+    /** Versamenti e prelievi trovati nell'import (anteprima confermata dall'utente). */
+    @PostMapping("/import-movements")
+    public SavingsImportService.ApplyResult importMovements(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+            @RequestBody List<SavingsImportService.SavingsMove> moves) {
+        return savingsImport.apply(userId, moves);
+    }
+
+    /** Collegamento a uno Space o a un IBAN; tipo sconosciuto o chiave vuota = salvadanaio a mano. */
+    private static void copySource(SavingsGoal from, SavingsGoal to) {
+        boolean valid = (SavingsImportService.SPACE.equals(from.getSourceType())
+                || SavingsImportService.IBAN.equals(from.getSourceType()))
+                && from.getSourceKey() != null && !from.getSourceKey().isBlank();
+        to.setSourceType(valid ? from.getSourceType() : null);
+        to.setSourceKey(valid ? (SavingsImportService.IBAN.equals(from.getSourceType())
+                ? CsvImportService.normalizeIban(from.getSourceKey()) : from.getSourceKey().trim()) : null);
+        to.setSourceLabel(valid ? from.getSourceLabel() : null);
+    }
 
     private Optional<SavingsGoal> owned(UUID userId, UUID id) {
         return savingsGoalRepository.findById(id).filter(g -> userId.equals(g.getUserId()));
@@ -45,6 +76,7 @@ public class SavingsGoalController {
             @RequestBody SavingsGoal goal) {
         goal.setId(null); // evita di sovrascrivere obiettivi esistenti
         goal.setUserId(userId);
+        copySource(goal, goal);
         if (goal.getCurrentAmount() == null) {
             goal.setCurrentAmount(BigDecimal.ZERO);
         }
@@ -67,6 +99,7 @@ public class SavingsGoalController {
             goal.setTargetDate(details.getTargetDate());
             goal.setColor(details.getColor());
             goal.setIcon(details.getIcon());
+            copySource(details, goal);
             if (goal.getTargetAmount() != null) {
                 goal.setCompleted(goal.getCurrentAmount().compareTo(goal.getTargetAmount()) >= 0);
             }
@@ -75,9 +108,11 @@ public class SavingsGoalController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> deleteSavingsGoal(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
             @PathVariable UUID id) {
         return owned(userId, id).map(goal -> {
+            movements.deleteByGoalId(goal.getId());
             savingsGoalRepository.delete(goal);
             return ResponseEntity.noContent().<Void>build();
         }).orElse(ResponseEntity.notFound().build());

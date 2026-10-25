@@ -11,7 +11,8 @@ import {
   PieChart,
   List
 } from 'lucide-react';
-import { fetchCategories, parseCsv, bulkImportTransactions } from '../api';
+import { fetchCategories, parseCsv, bulkImportTransactions, applySavingsMovements } from '../api';
+import { eur } from '../utils/format';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format, parseISO } from 'date-fns';
@@ -34,6 +35,7 @@ const ImportTransactions = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [learn, setLearn] = useState(true); // ricorda le categorie scelte per i prossimi import
+  const [savings, setSavings] = useState([]); // versamenti/prelievi dei salvadanai collegati
   
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -82,7 +84,8 @@ const ImportTransactions = () => {
     setIsLoading(true);
     try {
       const data = await parseCsv(file);
-      setTransactions(data.map(t => ({
+      setSavings((data.savings || []).map(m => ({ ...m, tempId: crypto.randomUUID() })));
+      setTransactions(data.rows.map(t => ({
         ...t, 
         tempId: crypto.randomUUID(),
         suggestedCategoryId: t.categoryNote ? t.categoryId : null, // categoria proposta da una regola
@@ -118,8 +121,8 @@ const ImportTransactions = () => {
   };
 
   const handleNextToConfirm = () => {
-    if (transactions.length === 0) {
-      setMessage({ text: 'No transactions to import.', type: 'error' });
+    if (transactions.length === 0 && savings.length === 0) {
+      setMessage({ text: 'Non c\'è niente da importare.', type: 'error' });
       return;
     }
     setCurrentStep(3);
@@ -136,18 +139,24 @@ const ImportTransactions = () => {
         type: rest.type.toUpperCase()
       }));
       
-      const res = await bulkImportTransactions(payload, learn);
-
-      if (res.ok) {
-        const { imported, skipped } = await res.json();
-        setMessage({
-          text: `Importate ${imported} transazioni` + (skipped ? `, ${skipped} saltate perché già presenti.` : '.'),
-          type: 'success'
-        });
-        setTimeout(() => navigate('/transactions'), skipped ? 3000 : 1500);
-      } else {
-        setMessage({ text: 'Importazione non riuscita. Riprova.', type: 'error' });
+      let imported = 0, skipped = 0;
+      if (payload.length > 0) {
+        const res = await bulkImportTransactions(payload, learn);
+        if (!res.ok) {
+          setMessage({ text: 'Importazione non riuscita. Riprova.', type: 'error' });
+          return;
+        }
+        ({ imported, skipped } = await res.json());
       }
+      // eslint-disable-next-line no-unused-vars
+      const saved = savings.length > 0 ? await applySavingsMovements(savings.map(({ tempId, ...m }) => m)) : null;
+      setMessage({
+        text: `Importate ${imported} transazioni` + (skipped ? `, ${skipped} saltate perché già presenti` : '')
+          + (saved ? `. Salvadanai: ${saved.applied} versamenti/prelievi registrati`
+            + (saved.skipped ? `, ${saved.skipped} già presenti` : '') : '') + '.',
+        type: 'success'
+      });
+      setTimeout(() => navigate(saved && imported === 0 ? '/goals' : '/transactions'), 3000);
     } catch (error) {
       setMessage({ text: 'Network error during import.', type: 'error' });
       console.error(error);
@@ -343,6 +352,36 @@ const ImportTransactions = () => {
                 </tbody>
               </table>
             </div>
+
+            {savings.length > 0 && (
+              <div className="glass-panel" style={{ padding: '1.25rem', marginTop: '1.5rem' }}>
+                <h3 style={{ marginBottom: '0.4rem' }}>Salvadanai ({savings.length})</h3>
+                <p className="text-muted text-sm" style={{ marginBottom: '0.75rem' }}>
+                  Movimenti dei conti e degli Spaces collegati ai tuoi salvadanai: aggiornano il salvadanaio. I bonifici
+                  verso il conto risparmi non sono spese; le spese pagate da uno Space restano anche tra i movimenti.
+                </p>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {savings.map(m => (
+                      <tr key={m.tempId}>
+                        <td style={{ padding: '0.3rem 0', whiteSpace: 'nowrap' }}>{m.date.split('-').reverse().join('/')}</td>
+                        <td>{m.goalName}</td>
+                        <td className="text-muted text-sm">{m.description}</td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: m.amount >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                          {m.amount >= 0 ? 'versamento +' : 'prelievo '}{eur(m.amount)}
+                        </td>
+                        <td style={{ width: 40, textAlign: 'right' }}>
+                          <button className="btn-icon" aria-label="Non registrare" onClick={() => setSavings(prev => prev.filter(x => x.tempId !== m.tempId))}
+                            style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -370,6 +409,12 @@ const ImportTransactions = () => {
                 </span>
                 <span className="stat-label">Uscite</span>
               </div>
+              {savings.length > 0 && (
+                <div className="stat-item">
+                  <span className="stat-value" style={{ color: 'var(--success)' }}>{savings.length}</span>
+                  <span className="stat-label">Salvadanai</span>
+                </div>
+              )}
             </div>
 
             <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', justifyContent: 'center', margin: '1rem 0', cursor: 'pointer' }}>

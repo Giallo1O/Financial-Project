@@ -21,7 +21,9 @@ import it.glknet.financial_manager.repository.SavingsGoalRepository;
 class SavingsGoalControllerTest {
 
 	private final SavingsGoalRepository repo = mock(SavingsGoalRepository.class);
-	private final SavingsGoalController controller = new SavingsGoalController(repo);
+	private final SavingsGoalController controller = new SavingsGoalController(repo,
+			mock(it.glknet.financial_manager.service.SavingsImportService.class),
+			mock(it.glknet.financial_manager.repository.SavingsMovementRepository.class));
 	private final UUID owner = UUID.randomUUID();
 	private final SavingsGoal goal = SavingsGoal.builder().id(UUID.randomUUID()).userId(owner).name("Vacanze")
 			.targetAmount(new BigDecimal("100")).currentAmount(new BigDecimal("80")).build();

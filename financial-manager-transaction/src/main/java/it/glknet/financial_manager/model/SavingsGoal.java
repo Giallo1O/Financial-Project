@@ -57,6 +57,20 @@ public class SavingsGoal {
     @Builder.Default
     private boolean completed = false;
 
+    /**
+     * Da dove arrivano i soldi, per aggiornare il salvadanaio con gli import: "SPACE" (uno Space N26, sourceKey e' il
+     * suo nome) o "IBAN" (un conto esterno, sourceKey e' l'IBAN). Null: salvadanaio gestito a mano.
+     */
+    @Column(name = "source_type")
+    private String sourceType;
+
+    @Column(name = "source_key")
+    private String sourceKey;
+
+    /** Come mostrarlo, es. "Andrea Gallicchio (IT13...)" o "Vacanze". */
+    @Column(name = "source_label")
+    private String sourceLabel;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

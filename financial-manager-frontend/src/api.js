@@ -227,10 +227,24 @@ export async function parseCsv(file) {
     method: 'POST',
     body: formData,
   });
-  const rows = await response.json();
-  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
-  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
-  return rows;
+  // { rows, savings (versamenti/prelievi dei salvadanai collegati), internalTransfers }
+  return await response.json();
+}
+
+/** Registra i versamenti/prelievi dei salvadanai trovati nell'import; restituisce { applied, skipped }. */
+export async function applySavingsMovements(moves) {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/import-movements`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(moves),
+  });
+  return await response.json();
+}
+
+/** Spaces e IBAN visti negli estratti conto, per collegare un salvadanaio: [{ type, key, label }]. */
+export async function fetchSavingsSources() {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/savings-goals/sources`);
+  return await response.json();
 }
 
 /** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
@@ -394,10 +408,7 @@ export async function scanReceipt(files) {
     method: 'POST',
     body: formData,
   });
-  const rows = await response.json();
-  // spostamenti tra i propri conti/Spaces (N26) che il server ha saltato
-  rows.internalTransfers = Number(response.headers.get('X-Internal-Transfers') || 0);
-  return rows;
+  return await response.json();
 }
 
 export async function saveReceipt(receipt) {
