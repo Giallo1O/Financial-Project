@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import './Groceries.css';
 import PrivacyMask from '../components/PrivacyMask';
+import AccountSelect from '../components/AccountSelect';
 import { prepareReceiptFile } from '../utils/imageUtils';
 import {
   fetchCategories, scanReceipt, saveReceipt, fetchReceipts, fetchReceipt, deleteReceipt,
@@ -96,6 +97,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
   const [draft, setDraft] = useState(null);
   const [categories, setCategories] = useState([]);
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [matches, setMatches] = useState([]); // movimenti già presenti che potrebbero essere questo scontrino
   const [linkId, setLinkId] = useState('');   // '' = crea una nuova spesa
 
@@ -189,6 +191,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
         purchaseDate: draft.purchaseDate,
         total: num(draft.total),
         categoryId: categoryId || null,
+        accountId: accountId || null,
         linkTransactionId: linkId || null,
         items: draft.items.filter(i => i.name.trim()).map(({ key, ...i }) => ({ // eslint-disable-line no-unused-vars
           ...i,
@@ -296,6 +299,7 @@ const ScanTab = ({ setMessage, onSaved }) => {
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        {!linkId && <AccountSelect value={accountId} onChange={setAccountId} className="form-select" />}
       </div>
 
       {matches.length > 0 && (

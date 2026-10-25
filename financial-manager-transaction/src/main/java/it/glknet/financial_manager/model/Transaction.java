@@ -41,6 +41,9 @@ public class Transaction {
 
 	private UUID categoryId;
 
+	/** Conto su cui e' registrato il movimento; null = nessun conto (dati precedenti ai conti). */
+	private UUID accountId;
+
 	private UUID userId;
 
 	private LocalDate transactionDate;

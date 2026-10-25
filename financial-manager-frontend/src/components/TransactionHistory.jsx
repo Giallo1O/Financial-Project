@@ -3,7 +3,7 @@ import { Trash2, Pencil, History, AlertCircle } from 'lucide-react';
 import './Components.css';
 import { eur } from '../utils/format';
 
-const TransactionHistory = ({ transactions, loading, onDelete, onEdit }) => {
+const TransactionHistory = ({ transactions, loading, onDelete, onEdit, accountNames = {} }) => {
   if (loading) {
     return (
       <div className="glass-panel" style={{ padding: '4rem', textAlign: 'center' }}>
@@ -57,6 +57,7 @@ const TransactionHistory = ({ transactions, loading, onDelete, onEdit }) => {
                   </td>
                   <td className="h-desc" style={{ padding: '1rem' }}>
                     <div style={{ fontWeight: 500 }}>{tx.description || 'Senza descrizione'}</div>
+                    {accountNames[tx.accountId] && <div className="text-muted text-sm">{accountNames[tx.accountId]}</div>}
                   </td>
                   <td className="h-cat" style={{ padding: '1rem' }}>
                     <span className="category-badge">

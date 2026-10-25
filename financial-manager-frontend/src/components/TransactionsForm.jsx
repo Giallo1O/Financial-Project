@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MinusCircle, Tag, Calendar, FileText, Euro } from 'lucide-react';
 import { fetchCategories } from '../api';
+import AccountSelect from './AccountSelect';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
@@ -16,6 +17,7 @@ const TransactionsForm = ({ onAddTransaction, editing, onCancelEdit }) => {
   const [categoryId, setCategoryId] = useState(editing?.categoryId || '');
   const [date, setDate] = useState(editing?.date ? new Date(`${editing.date}T00:00:00`) : new Date());
   const [description, setDescription] = useState(editing?.description || '');
+  const [accountId, setAccountId] = useState(editing?.accountId || '');
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
 
@@ -35,6 +37,7 @@ const TransactionsForm = ({ onAddTransaction, editing, onCancelEdit }) => {
       categoryId,
       date: format(date, 'yyyy-MM-dd'),
       description,
+      accountId: accountId || null,
     });
 
     // Reset form (keep date)
@@ -125,6 +128,10 @@ const TransactionsForm = ({ onAddTransaction, editing, onCancelEdit }) => {
               />
             </div>
           </div>
+        </div>
+
+        <div className="form-group">
+          <AccountSelect value={accountId} onChange={setAccountId} useLast={!editing} />
         </div>
 
         <div className="form-group">

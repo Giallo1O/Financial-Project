@@ -11,6 +11,8 @@ import SavingsGoals from './pages/SavingsGoals';
 import RecurringTransactions from './pages/RecurringTransactions';
 import Groceries from './pages/Groceries';
 import Shopping from './pages/Shopping';
+import Accounts from './pages/Accounts';
+import SharedExpenses from './pages/SharedExpenses';
 import Profile from './pages/Profile';
 import HaCallback from './pages/HaCallback';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -34,6 +36,8 @@ function App() {
           <Route path="/goals" element={<SavingsGoals />} />
           <Route path="/groceries" element={<Groceries />} />
           <Route path="/shopping" element={<Shopping />} />
+          <Route path="/accounts" element={<Accounts />} />
+          <Route path="/duo" element={<SharedExpenses />} />
           <Route path="/comparisons" element={<Comparisons />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/import" element={<ImportTransactions />} />

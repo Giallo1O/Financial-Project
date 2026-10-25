@@ -91,6 +91,7 @@ function mapTransactions(list, categoryMap) {
       categoryTags: categoryInfo ? (categoryInfo.tags || []) : [],
       isFixed: categoryInfo ? Boolean(categoryInfo.fixed) : false,
       description: t.description,
+      accountId: t.accountId || null,
       date: t.transactionDate || '',
     };
   });
@@ -181,6 +182,7 @@ export async function createTransaction(transactionData) {
     categoryId: transactionData.categoryId,  // UUID from the category select
     userId: getCurrentUserId(),
     transactionDate: transactionData.date,
+    accountId: transactionData.accountId || null,
   };
 
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions`, {
@@ -199,6 +201,7 @@ export async function updateTransaction(id, transactionData) {
     type: transactionData.type ? transactionData.type.toUpperCase() : 'USCITA',
     categoryId: transactionData.categoryId || null,
     transactionDate: transactionData.date,
+    accountId: transactionData.accountId || null,
   };
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/${id}`, {
     method: 'PUT',
@@ -234,7 +237,7 @@ export async function parseCsv(file) {
 }
 
 /** learn = true: il server ricorda le categorie scelte come regole per i prossimi import. */
-export async function bulkImportTransactions(transactions, learn = false) {
+export async function bulkImportTransactions(transactions, learn = false, accountId = null) {
   const userId = getCurrentUserId();
   const payload = transactions.map(t => ({
     ...t,
@@ -243,7 +246,7 @@ export async function bulkImportTransactions(transactions, learn = false) {
     categoryId: t.categoryId === '' ? null : t.categoryId
   }));
 
-  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import?learn=${learn}`, {
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/transactions/bulk-import?learn=${learn}${accountId ? `&accountId=${accountId}` : ''}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -544,6 +547,107 @@ export async function clearCheckedShoppingItems(listId) {
 /** Prodotti che compri di solito (dai tuoi scontrini), con "due" = probabilmente da ricomprare. */
 export async function fetchShoppingSuggestions() {
   return (await authenticatedFetch(`${SHOP}/suggestions`)).json();
+}
+
+// ─── Conti e giroconti ─────────────────────────────────────────────────────
+
+const ACC = `${TRANSACTION_API}/api`;
+const jsonPost = (url, method, body) => authenticatedFetch(url, {
+  method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+});
+
+/** { accounts: [{id,name,type,color,initialBalance,balance,archived}], unassigned, hasUnassigned, total } */
+export async function fetchAccounts() {
+  return (await authenticatedFetch(`${ACC}/accounts`)).json();
+}
+
+export async function createAccount(data) {
+  return (await jsonPost(`${ACC}/accounts`, 'POST', data)).json();
+}
+
+export async function updateAccount(id, data) {
+  return (await jsonPost(`${ACC}/accounts/${id}`, 'PUT', data)).json();
+}
+
+export async function deleteAccount(id) {
+  await authenticatedFetch(`${ACC}/accounts/${id}`, { method: 'DELETE' });
+}
+
+/** Mette su un conto tutti i movimenti che non ne hanno uno; restituisce quanti. */
+export async function assignUnassignedToAccount(accountId) {
+  return (await jsonPost(`${ACC}/accounts/assign-unassigned`, 'POST', { accountId })).json();
+}
+
+export async function fetchTransfers() {
+  return (await authenticatedFetch(`${ACC}/transfers`)).json();
+}
+
+export async function createTransfer(data) {
+  return (await jsonPost(`${ACC}/transfers`, 'POST', data)).json();
+}
+
+export async function deleteTransfer(id) {
+  await authenticatedFetch(`${ACC}/transfers/${id}`, { method: 'DELETE' });
+}
+
+// ─── Spese in due (gruppi con codice) ─────────────────────────────────────
+
+const GRP = `${TRANSACTION_API}/api/groups`;
+
+export async function fetchGroups() {
+  return (await authenticatedFetch(GRP)).json();
+}
+
+export async function createGroup(name) {
+  return (await jsonPost(GRP, 'POST', { name })).json();
+}
+
+export async function joinGroup(code) {
+  return (await jsonPost(`${GRP}/join`, 'POST', { code })).json();
+}
+
+export async function createGroupInvite(id) {
+  return (await authenticatedFetch(`${GRP}/${id}/invite`, { method: 'POST' })).json();
+}
+
+export async function revokeGroupInvite(id) {
+  await authenticatedFetch(`${GRP}/${id}/invite`, { method: 'DELETE' });
+}
+
+export async function leaveGroup(id) {
+  await authenticatedFetch(`${GRP}/${id}`, { method: 'DELETE' });
+}
+
+/** { group, balances, debts: [{from,to,amount}], expenses, settlements } */
+export async function fetchGroupSummary(id) {
+  return (await authenticatedFetch(`${GRP}/${id}/summary`)).json();
+}
+
+export async function addGroupExpense(id, expense) {
+  return (await jsonPost(`${GRP}/${id}/expenses`, 'POST', expense)).json();
+}
+
+export async function deleteGroupExpense(id, expenseId) {
+  await authenticatedFetch(`${GRP}/${id}/expenses/${expenseId}`, { method: 'DELETE' });
+}
+
+export async function addGroupSettlement(id, settlement) {
+  return (await jsonPost(`${GRP}/${id}/settlements`, 'POST', settlement)).json();
+}
+
+export async function deleteGroupSettlement(id, settlementId) {
+  await authenticatedFetch(`${GRP}/${id}/settlements/${settlementId}`, { method: 'DELETE' });
+}
+
+// ─── Previsione e avvisi ──────────────────────────────────────────────────
+
+export async function fetchForecast() {
+  return (await authenticatedFetch(`${TRANSACTION_API}/api/forecast`)).json();
+}
+
+/** [{ type, severity: 'danger'|'warning'|'info', message, link }], i più gravi per primi. */
+export async function fetchAlerts() {
+  return (await authenticatedFetch(`${TRANSACTION_API}/api/alerts`)).json();
 }
 
 // ─── Home Assistant (collegamento dell'account dal Profilo) ────────────────

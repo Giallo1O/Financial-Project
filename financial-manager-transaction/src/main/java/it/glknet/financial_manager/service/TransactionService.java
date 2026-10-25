@@ -21,6 +21,7 @@ import it.glknet.financial_manager.model.Category;
 import it.glknet.financial_manager.model.Receipt;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.model.TransactionType;
+import it.glknet.financial_manager.repository.AccountRepository;
 import it.glknet.financial_manager.repository.CategoryRepository;
 import it.glknet.financial_manager.repository.ReceiptRepository;
 import it.glknet.financial_manager.repository.TransactionRepository;
@@ -34,6 +35,8 @@ public class TransactionService {
 
 	private final CategoryRepository categoryRepository;
 
+	private final AccountRepository accountRepository;
+
 	private final ReceiptRepository receiptRepository;
 
 	/** Importo massimo di un singolo movimento: oltre e' quasi certamente un errore di battitura o di import. */
@@ -43,7 +46,7 @@ public class TransactionService {
 	public Transaction createTransaction(TransactionRequest request) {
 		validate(request);
 		Transaction transaction = Transaction.builder().description(request.description()).amount(request.amount())
-				.type(request.type()).categoryId(request.categoryId()).userId(request.userId())
+				.type(request.type()).categoryId(request.categoryId()).accountId(request.accountId()).userId(request.userId())
 				.transactionDate(request.transactionDate()).build();
 
 		return repository.save(transaction);
@@ -58,6 +61,7 @@ public class TransactionService {
 		tx.setAmount(request.amount());
 		tx.setType(request.type());
 		tx.setCategoryId(request.categoryId());
+		tx.setAccountId(request.accountId());
 		tx.setTransactionDate(request.transactionDate());
 		return repository.save(tx);
 	}
@@ -77,6 +81,10 @@ public class TransactionService {
 			if (category == null || !category.getUserId().equals(request.userId())) {
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La categoria inserita non esiste");
 			}
+		}
+		if (request.accountId() != null && !accountRepository.findById(request.accountId())
+				.filter(a -> a.getUserId().equals(request.userId())).isPresent()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Il conto scelto non esiste");
 		}
 	}
 

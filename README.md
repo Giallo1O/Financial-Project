@@ -12,6 +12,9 @@ Applicazione web per gestire le proprie finanze su un **home server**: movimenti
 | **Import CSV** | Wizard in 3 step: carica il CSV, controlla e correggi le righe, conferma. **Salta i movimenti già presenti** (stessa data, importo, tipo e descrizione) e le **uscite già registrate da uno scontrino** (stesso importo, data entro 3 giorni): puoi ricaricare estratti conto che si sovrappongono e non conti due volte la spesa che hai già salvato con lo scontrino. L'anteprima dice perché una riga verrà saltata. **Propone la categoria da solo** con le regole automatiche (vedi sotto). Riconosce date `yyyy-MM-dd`, `dd/MM/yyyy`, `dd-MM-yyyy` e importi con virgola o punto. |
 | **Spesa (scontrini)** | Carichi la foto (o il PDF) di uno scontrino: un'AI (Claude) estrae negozio, data, totale e ogni articolo con nome normalizzato, quantità, prezzo e tipo di alimento. Controlli e correggi la bozza, poi salvi: viene creata la **spesa** tra le transazioni e le righe prodotto. Se hai già importato l'estratto conto, al salvataggio l'app propone di **collegare lo scontrino al movimento in banca** invece di creare una nuova spesa. Pagine: elenco scontrini, **prodotti e prezzi** (minimo/medio/massimo, dove costa meno, andamento nel tempo), **spesa per tipo di alimento** per mese. |
 | **Lista della spesa** | Liste da spuntare in negozio (voci grandi, pensate per il pollice), con quantità e unità. **Suggerimenti dagli scontrini**: "Da ricomprare" (prodotti che compri di solito e che dovresti aver finito, in base a ogni quanti giorni li compri) e "Di solito compri"; basta un tocco per aggiungerli. Per ogni voce con un prezzo noto mostra l'ultimo prezzo e **dove costa meno**, e in fondo la **stima della spesa** e quanto risparmieresti comprando ogni cosa nel negozio più economico. **Condivisibile**: il proprietario crea un codice, l'altra persona lo inserisce in "Unisciti con codice" e vedete la stessa lista; le spunte e le aggiunte compaiono sull'altro telefono in pochi secondi. |
+| **Conti e giroconti** | Più conti (banca, carta, contanti, risparmio…) con **saldo iniziale**: il saldo di ognuno è saldo iniziale + entrate − uscite ± giroconti, fino a oggi, e in cima c'è il **patrimonio totale**. Ogni movimento (inserimento, import CSV, scontrino, ricorrenza) può essere assegnato a un conto; l'app ricorda l'ultimo scelto. I **giroconti** (es. prelievo dalla banca ai contanti) spostano i soldi tra due conti e **non contano come spese né entrate**, quindi non sporcano grafici e budget. I movimenti già presenti restano "senza conto" e si possono spostare tutti insieme su un conto con un tocco. |
+| **Spese in due** | Gruppo (es. «Casa») a cui si entra con un codice, come per la lista della spesa. Registri una spesa dicendo **chi ha pagato**, **quanto**, **quando** e **tra chi si divide** (di default tutti, in parti uguali; i centesimi che avanzano vanno uno ciascuno ai primi, così la somma torna sempre). In cima vedi se **ti devono** o **devi dare** e quanto; sotto, i passaggi di denaro minimi per pareggiare: con **Pagato** registri che i soldi sono stati dati. Si esce dal gruppo solo a conti pareggiati; chi esce per ultimo elimina il gruppo con lo storico. Non tocca le tue transazioni personali. |
+| **Avvisi e previsione** | In cima alla dashboard: gli **avvisi** (budget superato, budget quasi finito all'80%, categoria che "di questo passo" sfora, ricorrenze in scadenza entro 3 giorni o in ritardo, il mese che chiude in rosso, quanto devi dare o ti devono nelle spese in due) e la **previsione di fine mese**: entrate − uscite già registrate − ricorrenze non ancora confermate − spesa variabile stimata (ritmo giornaliero delle categorie *non fisse* × giorni rimasti). Le categorie segnate come "fisse" non vengono moltiplicate, quindi l'affitto non gonfia la stima. |
 | **Categorie** | Colore, icona, tipo (entrata/uscita), budget mensile, flag **fissa/variabile** e **tag** (es. `#Parigi2026`). |
 | **Categorie automatiche** | Regole "parola chiave → categoria" (es. `esselunga` → Spesa) applicate all'anteprima dell'import: la categoria compare già scelta, con l'indicazione della regola. Si **imparano da sole**: quando importi e scegli una categoria per una riga, con la casella "Ricorda le categorie scelte" (attiva di default) l'app crea la regola con il nome dell'esercente; se correggi una categoria suggerita, la regola viene corretta. Il pulsante "Crea dalle mie transazioni" ricava le regole dallo storico già categorizzato (parole che compaiono almeno 2 volte con la stessa categoria nell'80% dei casi). Le regole si vedono, si aggiungono e si eliminano nella pagina Categorie. Vince la regola più specifica (`amazon prime` batte `amazon`); una regola vale solo per categorie del tipo giusto (uscita/entrata); le parole contano intere (`bar` non trova `barilla`). |
 | **Budget** | Per ogni categoria di spesa: budget mensile vs speso, con avviso di sforamento. |
@@ -48,6 +51,9 @@ Un database PostgreSQL per servizio. Nessun broker di messaggi.
 - **`financial-manager-user`** (Spring Boot, :8082) — `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (risolve un token in utente, usato dagli altri servizi).
 - **`financial-manager-transaction`** (Spring Boot, :8080) — il cuore del sistema. Tutte le API richiedono `Authorization: Bearer <token>` e lavorano solo sui dati dell'utente del token:
   - `/api/transactions` (CRUD, filtro `month`/`year`, `parse-csv` con anteprima doppioni, `bulk-import`)
+  - `/api/accounts` (conti con saldo, `assign-unassigned`), `/api/transfers` (giroconti)
+  - `/api/groups` (spese in due: gruppi, `join`, codice di invito, `summary`, spese, pareggi)
+  - `/api/forecast`, `/api/alerts` (previsione di fine mese e avvisi)
   - `/api/categories`, `/api/recurring-transactions`, `/api/savings-goals`
   - `/api/category-rules` (elenco, crea/aggiorna, elimina, `learn-from-history`)
   - `/api/shopping-lists` (liste, voci, codice di invito, `join`, `suggestions`)
@@ -192,6 +198,17 @@ Un servizio `backup` (compose) o un CronJob (Kubernetes, ore 01:30 ora italiana,
 
 **Sono sullo stesso disco del server:** se il disco si rompe, si perdono anche i backup. Copia ogni tanto la cartella su un altro supporto (NAS, disco esterno, altro PC).
 
+### Copia fuori dal server (bozza, non provata)
+
+Il servizio `backup-offsite` (compose, profilo `offsite`) copia ogni giorno la cartella `backups` su una destinazione esterna con [restic](https://restic.net): le copie sono **cifrate**, con storico (14 giorni, 8 settimane, 12 mesi) e senza duplicare i dati uguali. È scritto ma **mai avviato** (nell'ambiente di sviluppo non c'era Docker).
+
+Da fare tu:
+
+1. Scegli la destinazione e compila `RESTIC_REPOSITORY` e `RESTIC_PASSWORD` nel `.env` (esempi in `.env.example`: NAS o altro PC via sftp, Backblaze B2, disco esterno). Per sftp metti la chiave privata e `known_hosts` in `./offsite/`; per un disco esterno aggiungi il volume al servizio.
+2. `docker compose --profile offsite up -d`, poi `docker logs db-backup-offsite`: alla prima esecuzione crea il deposito (`restic init`) e fa la prima copia.
+3. **Provane il ripristino una volta** (una copia mai provata non è una copia): `docker compose run --rm --entrypoint restic backup-offsite restore latest --target /tmp/prova` e controlla che i file ci siano.
+4. **Conserva `RESTIC_PASSWORD` anche fuori dal server** (gestore di password): senza, le copie non si aprono più.
+
 Ripristino su database vuoto:
 
 ```bash
@@ -238,14 +255,23 @@ Tutta la roadmap originale (`TODO`) è realizzata, più budget mensili, scontrin
 - ✅ Categorie automatiche provate con servizi reali (suggerimento, apprendimento, correzione, storico, isolamento tra utenti) e nel browser (import e pagina Categorie).
 - ✅ Lista della spesa provata con servizi reali e due utenti (creazione, aggiunta con prezzi, suggerimenti "da ricomprare", condivisione con codice, spunte, uscita ed eliminazione, accessi negati agli estranei) e in due telefoni emulati (la spunta di uno compare sull'altro in circa 4 secondi).
 - ✅ Doppio conteggio scontrino/banca provato nei due ordini (scontrino poi estratto conto, estratto conto poi scontrino) e nel browser.
+- ✅ Conti e giroconti provati con servizi reali (saldi, giroconto, 409 su conto con giroconti, assegnazione dei movimenti senza conto, import su un conto, accessi negati agli estranei) e nel browser emulando un telefono.
+- ✅ Spese in due provate con servizi reali e tre utenti (codice, quote con centesimi, partecipanti scelti, saldi che sommano zero, passaggi minimi, pareggio, uscita bloccata con saldo aperto, estranei respinti) e in due telefoni emulati.
+- ✅ Previsione e avvisi provati con servizi reali (budget superato, ricorrenza in scadenza, spese fisse escluse dal ritmo) e nella dashboard di un telefono emulato.
 - ⚠️ **La lettura vera con Claude non è stata provata:** nei test la risposta dell'AI era simulata (verificati la richiesta inviata e l'elaborazione della risposta, non la qualità della lettura). Va provata con scontrini reali.
 - ⚠️ **Tailscale non provato:** nell'ambiente non c'era un account Tailscale né Docker. La configurazione (`tailscale/serve.json`, il servizio nel compose, i comandi) è scritta in base al codice sorgente ufficiale di Tailscale e controllata nella sintassi, ma non è mai stata avviata.
 - ⚠️ **Non provata su telefoni veri** (Android, Safari su iPhone): l'emulazione non riproduce fotocamera, installazione e comportamenti di Safari. Anche la configurazione di nginx (limite di upload, timeout, regole per `sw.js`) non è stata avviata perché nginx non c'era nell'ambiente.
-- ⚠️ Non provati: `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
+- ⚠️ Non provati: la copia fuori dal server (`backup-offsite`), `docker compose up`, `deploy.sh`, il manifest Kubernetes e il CronJob di backup (nel mio ambiente non c'erano Docker né Kubernetes).
 
 ### Limiti noti e cose aperte
 
-- **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login invalida il precedente (un dispositivo alla volta); `user-service` viene interrogato a ogni richiesta (nessuna cache).
+- **Previsione:** è una stima semplice. Nei primi 3 giorni del mese è segnalata come non affidabile; un acquisto grosso e isolato in una categoria *non fissa* (un telefono, una vacanza) viene proiettato sui giorni restanti: segna la categoria come fissa o ignora la stima quel mese. Il budget è per categoria e non tiene conto dei conti.
+
+- **Spese in due:** divisione solo in parti uguali tra i partecipanti scelti (niente percentuali o importi diversi); tutti i membri hanno gli stessi poteri (anche eliminare una spesa o un pareggio); una persona uscita compare come «Ex membro» nelle vecchie spese; le spese del gruppo non entrano nelle tue transazioni personali né nei tuoi grafici.
+
+- **Conti:** un conto con giroconti non si può eliminare (si archivia); eliminandone uno senza giroconti i suoi movimenti restano "senza conto". I saldi contano solo i movimenti con data fino a oggi. Gli scontrini collegati a un movimento in banca prendono il conto del movimento.
+
+- **Token:** non scade mai ed è salvato in chiaro nel DB; un nuovo login riusa lo stesso token (puoi stare collegato da più dispositivi, ma chi lo ruba resta dentro finché non cambi password o lo si azzera nel DB); `user-service` viene interrogato a ogni richiesta (nessuna cache).
 - **Ricorrenze solo mensili:** il campo `recurrenceInterval` esiste ma la logica gestisce solo "ogni mese al giorno X".
 - **Categorie automatiche:** la parola chiave imparata è la prima parola significativa della descrizione (tolte quelle generiche come pagamento, pos, carta, paypal); se è troppo generica (es. `amazon` per spese diverse) correggi la regola o aggiungine una più specifica nella pagina Categorie. Le regole valgono solo nell'import da CSV, non nell'inserimento manuale né negli scontrini. Se importi una riga con una categoria sbagliata e la casella è attiva, la regola impara lo sbaglio: si corregge o si elimina dalla pagina Categorie.
 - **Lista della spesa:** "da ricomprare" è una stima (servono almeno due giorni di acquisto per calcolare ogni quanto compri un prodotto; si segnala quando è passato l'80% di quel tempo). Il prezzo di una voce compare solo se nome e unità coincidono con un prodotto degli scontrini di chi guarda. Il proprietario non può togliere una persona già entrata (disattivare il codice impedisce solo nuovi ingressi). Gli aggiornamenti arrivano a intervalli di 8 secondi, non in tempo reale. Dopo uno scontrino le voci non si spuntano da sole.
