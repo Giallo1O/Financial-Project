@@ -50,6 +50,7 @@ class RecurringSuggestionServiceTest {
 		assertFalse(spotify.variableAmount());
 		assertEquals(0, new BigDecimal("20.99").compareTo(spotify.amount()));
 		assertEquals(18, spotify.dayOfMonth());
+		assertEquals("SPOTIFY", spotify.description()); // senza il codice della banca
 		assertEquals(subscriptions, spotify.categoryId());
 		var telecom = s.get(1);
 		assertTrue(telecom.variableAmount());

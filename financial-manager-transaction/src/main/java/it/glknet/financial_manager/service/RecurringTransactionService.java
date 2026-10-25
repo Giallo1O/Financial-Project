@@ -96,6 +96,13 @@ public class RecurringTransactionService {
         // se la banca ha gia' portato questa spesa (estratto conto importato), la collega invece di contarla due volte
         Transaction createdTx = transactionService.createForRecurring(txRequest, recurring.getId());
 
+        // Conferma di una scadenza gia' passata (es. ottobre quando la prossima e' novembre): la prossima resta com'e'
+        if (recurring.getNextDueDate() != null && effectiveDate
+                .isBefore(recurring.getNextDueDate().minusDays(TransactionService.RECURRING_DAYS))) {
+            recurringRepository.save(recurring);
+            return createdTx;
+        }
+
         LocalDate baseDate = recurring.getNextDueDate() != null ? recurring.getNextDueDate() : effectiveDate;
         LocalDate nextMonth = baseDate.plusMonths(1);
         int day = (recurring.getDayOfMonth() != null && recurring.getDayOfMonth() >= 1 && recurring.getDayOfMonth() <= 31)

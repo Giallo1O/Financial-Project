@@ -53,6 +53,17 @@ class RecurringTransactionServiceTest {
 	}
 
 	@Test
+	void confirmingAPastOccurrenceKeepsTheNextDueDate() {
+		RecurringTransaction r = rent(LocalDate.of(2026, 11, 30));
+		when(repo.findById(r.getId())).thenReturn(Optional.of(r));
+		when(transactions.createForRecurring(any(), any())).thenReturn(Transaction.builder().build());
+
+		service.confirm(owner, r.getId(), LocalDate.of(2026, 10, 31)); // l'affitto di ottobre, confermato dopo
+
+		assertEquals(LocalDate.of(2026, 11, 30), r.getNextDueDate()); // novembre resta da pagare
+	}
+
+	@Test
 	void otherUsersRecurringTransactionIsNotFound() {
 		RecurringTransaction r = rent(LocalDate.of(2026, 1, 31));
 		when(repo.findById(r.getId())).thenReturn(Optional.of(r));

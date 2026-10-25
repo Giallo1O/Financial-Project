@@ -93,11 +93,18 @@ public class RecurringSuggestionService {
 			UUID category = list.stream().map(Transaction::getCategoryId).filter(Objects::nonNull)
 					.collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).entrySet().stream()
 					.max(Map.Entry.comparingByValue()).map(Map.Entry::getKey).orElse(null);
-			result.add(new Suggestion(e.getKey().substring(0, e.getKey().lastIndexOf('|')), last.getDescription(),
+			result.add(new Suggestion(e.getKey().substring(0, e.getKey().lastIndexOf('|')), readableName(last.getDescription()),
 					last.getType(), amount, variable, days.get(days.size() / 2), category, months.size(),
 					last.getTransactionDate()));
 		}
 		result.sort(Comparator.comparingInt(Suggestion::months).reversed().thenComparing(Suggestion::keyword));
 		return result;
+	}
+
+	/** Toglie i codici della banca dal nome: "SPOTIFY*P481C85CC7" diventa "SPOTIFY", "NOW C1039 Pass Ent" "NOW Pass Ent". */
+	static String readableName(String description) {
+		String clean = String.join(" ", java.util.Arrays.stream(description.split("[\\s*]+"))
+				.filter(w -> !w.isBlank() && !w.matches(".*\\d.*")).toList());
+		return clean.isBlank() ? description : clean;
 	}
 }
