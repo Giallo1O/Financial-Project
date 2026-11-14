@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wand2, Check } from 'lucide-react';
-import { fetchUncategorizedMerchants, saveCategoryRule, applyCategoryRules } from '../api';
+import { Wand2, Check, Trash2 } from 'lucide-react';
+import { fetchUncategorizedMerchants, saveCategoryRule, applyCategoryRules, deleteUncategorizedGroup } from '../api';
 import { eur } from '../utils/format';
 import PrivacyMask from './PrivacyMask';
 
@@ -55,6 +55,22 @@ const UncategorizedMerchants = ({ categories, onRulesChanged }) => {
     }
   };
 
+  // Per i movimenti che non sono spese ne' entrate (es. vecchi spostamenti tra conto e Spaces)
+  const remove = async (g) => {
+    const kind = g.type === 'USCITA' ? 'uscite' : 'entrate';
+    if (!window.confirm(`Eliminare ${g.count} movimenti (${kind}) del gruppo «${g.keyword}»?\nEs. ${g.examples.join(', ')}\n\nNon si può annullare dall'app.`)) return;
+    setBusy(true);
+    try {
+      const { deleted } = await deleteUncategorizedGroup(g.keyword, g.type, g.count);
+      setMessage(`Eliminati ${deleted} movimenti del gruppo «${g.keyword}».`);
+      load();
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const total = groups.reduce((s, g) => s + g.count, 0);
 
   return (
@@ -99,6 +115,11 @@ const UncategorizedMerchants = ({ categories, onRulesChanged }) => {
                 <button type="button" className="btn btn-primary" onClick={() => assign(g)}
                   disabled={busy || !c.categoryId || keyword.trim().length < 3}>
                   <Check size={18} /> Assegna
+                </button>
+                <button type="button" className="btn-icon" onClick={() => remove(g)} disabled={busy}
+                  title="Elimina tutti i movimenti del gruppo" aria-label="Elimina tutti i movimenti del gruppo"
+                  style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>
+                  <Trash2 size={18} />
                 </button>
               </div>
             );

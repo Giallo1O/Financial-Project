@@ -13,11 +13,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.model.CategoryRule;
+import it.glknet.financial_manager.model.TransactionType;
 import it.glknet.financial_manager.service.CategoryRuleService;
 import lombok.RequiredArgsConstructor;
 
@@ -60,6 +62,13 @@ public class CategoryRuleController {
 	@GetMapping("/uncategorized")
 	public List<CategoryRuleService.MerchantGroup> uncategorized(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId) {
 		return service.uncategorized(userId);
+	}
+
+	/** Elimina i movimenti senza categoria di un gruppo; count = quanti l'utente ne ha visti. */
+	@DeleteMapping("/uncategorized")
+	public Map<String, Integer> deleteUncategorized(@RequestAttribute(AuthInterceptor.USER_ID) UUID userId,
+			@RequestParam String keyword, @RequestParam TransactionType type, @RequestParam int count) {
+		return Map.of("deleted", service.deleteUncategorized(userId, keyword, type, count));
 	}
 
 	/** Crea regole dalle transazioni gia' categorizzate. */

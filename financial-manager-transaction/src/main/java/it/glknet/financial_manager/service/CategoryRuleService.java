@@ -81,6 +81,23 @@ public class CategoryRuleService {
 				.toList();
 	}
 
+	/**
+	 * Elimina i movimenti senza categoria di un gruppo (es. vecchi spostamenti tra conto e Spaces importati come
+	 * spese). {@code expected} e' il numero di movimenti che l'utente ha visto: se il gruppo e' cambiato non elimina nulla.
+	 */
+	@Transactional
+	public int deleteUncategorized(UUID userId, String keyword, TransactionType type, int expected) {
+		List<Transaction> group = transactions.findByUserId(userId).stream()
+				.filter(t -> t.getCategoryId() == null && t.getType() == type
+						&& merchantKeyword(t.getDescription()).equals(keyword))
+				.toList();
+		if (group.isEmpty() || group.size() != expected) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Il gruppo è cambiato: ricarica la pagina e riprova");
+		}
+		transactions.deleteAll(group);
+		return group.size();
+	}
+
 	/** La parola chiave dell'esercente; se la descrizione non ne ha una (es. "D+") la descrizione normalizzata. */
 	private static String merchantKeyword(String description) {
 		String k = TextKeywords.extractKeyword(description);

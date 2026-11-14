@@ -3,7 +3,8 @@ import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-re
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import CategoryRules from '../components/CategoryRules';
 import UncategorizedMerchants from '../components/UncategorizedMerchants';
-import CategoryIcon, { searchIcons } from '../components/CategoryIcon';
+import CategoryIcon from '../components/CategoryIcon';
+import { searchIcons } from '../utils/iconSearch';
 import '../components/Components.css'; // Corrected path
 
 

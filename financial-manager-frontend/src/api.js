@@ -493,6 +493,13 @@ export async function fetchUncategorizedMerchants() {
   return await response.json();
 }
 
+/** Elimina i movimenti senza categoria di un gruppo (count = quanti ne vede l'utente); restituisce { deleted }. */
+export async function deleteUncategorizedGroup(keyword, type, count) {
+  const q = new URLSearchParams({ keyword, type, count });
+  const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/uncategorized?${q}`, { method: 'DELETE' });
+  return await response.json();
+}
+
 /** Crea regole dalle transazioni già categorizzate; restituisce { created }. */
 export async function learnCategoryRulesFromHistory() {
   const response = await authenticatedFetch(`${TRANSACTION_API}/api/category-rules/learn-from-history`, { method: 'POST' });

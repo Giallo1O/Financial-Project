@@ -412,7 +412,7 @@
 .merchant-groups { display: flex; flex-direction: column; gap: 0.75rem; }
 .merchant-group {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px auto;
+  grid-template-columns: minmax(0, 1fr) 200px auto auto;
   gap: 0.75rem;
   align-items: center;
   padding-bottom: 0.75rem;

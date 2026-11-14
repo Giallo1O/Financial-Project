@@ -230,4 +230,19 @@ class CategoryRuleServiceTest {
 		assertEquals(TransactionType.USCITA, groups.get(0).type());
 		assertEquals(3, groups.size()); // bennet uscite, bennet entrate, "d"
 	}
+
+	@Test
+	void deletesOnlyTheUncategorizedGroupTheUserSaw() {
+		Transaction out1 = uncategorized("Conto corrente principale", TransactionType.USCITA, "50");
+		Transaction out2 = uncategorized("Conto corrente principale", TransactionType.USCITA, "20");
+		Transaction in = uncategorized("Conto corrente principale", TransactionType.ENTRATA, "50");
+		Transaction categorized = tx("Conto corrente principale", shopping);
+		when(transactions.findByUserId(user)).thenReturn(List.of(out1, out2, in, categorized));
+
+		assertThrows(ResponseStatusException.class, () -> service.deleteUncategorized(user, "conto", TransactionType.USCITA, 3));
+		verify(transactions, never()).deleteAll(any());
+
+		assertEquals(2, service.deleteUncategorized(user, "conto", TransactionType.USCITA, 2));
+		verify(transactions).deleteAll(List.of(out1, out2));
+	}
 }
