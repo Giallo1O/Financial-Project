@@ -3,8 +3,7 @@ import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-re
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import CategoryRules from '../components/CategoryRules';
 import UncategorizedMerchants from '../components/UncategorizedMerchants';
-import CategoryIcon from '../components/CategoryIcon';
-import { iconNames } from 'lucide-react/dynamic';
+import CategoryIcon, { searchIcons } from '../components/CategoryIcon';
 import '../components/Components.css'; // Corrected path
 
 
@@ -15,10 +14,7 @@ const Categories = () => {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [icon, setIcon] = useState('tag');
-  // Icone Lucide che contengono il testo scritto (nomi in inglese); sparisce quando il nome e' esatto
-  const iconQuery = icon.trim().toLowerCase();
-  const iconMatches = iconQuery.length >= 2 && !iconNames.includes(iconQuery)
-    ? iconNames.filter(n => n.includes(iconQuery)).slice(0, 30) : [];
+  const iconMatches = searchIcons(icon); // suggerimenti mentre si scrive, spariscono col nome esatto
   const [isExpense, setIsExpense] = useState(true);
   const [budget, setBudget] = useState('');
   const [isFixed, setIsFixed] = useState(false);
