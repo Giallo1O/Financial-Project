@@ -281,9 +281,9 @@ const SavingsGoals = () => {
                 <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: goalColor }} />
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
                     <div style={{
-                      width: '40px', height: '40px',
+                      width: '40px', height: '40px', flexShrink: 0,
                       borderRadius: '12px',
                       background: `${goalColor}25`,
                       border: `1px solid ${goalColor}50`,
@@ -291,7 +291,7 @@ const SavingsGoals = () => {
                     }}>
                       <Target size={20} color={goalColor} />
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                       <h3 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {goal.name}
                         {goal.completed && <Award size={18} color="var(--accent-secondary)" />}
@@ -305,7 +305,7 @@ const SavingsGoals = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                     <button
                       onClick={() => handleOpenEdit(goal)}
                       className="btn-icon"
