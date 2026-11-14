@@ -3,6 +3,8 @@ import { Tag, Plus, Palette, Type, Check, X, Pencil, RotateCcw } from 'lucide-re
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import CategoryRules from '../components/CategoryRules';
 import UncategorizedMerchants from '../components/UncategorizedMerchants';
+import CategoryIcon from '../components/CategoryIcon';
+import { iconNames } from 'lucide-react/dynamic';
 import '../components/Components.css'; // Corrected path
 
 
@@ -13,6 +15,10 @@ const Categories = () => {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
   const [icon, setIcon] = useState('tag');
+  // Icone Lucide che contengono il testo scritto (nomi in inglese); sparisce quando il nome e' esatto
+  const iconQuery = icon.trim().toLowerCase();
+  const iconMatches = iconQuery.length >= 2 && !iconNames.includes(iconQuery)
+    ? iconNames.filter(n => n.includes(iconQuery)).slice(0, 30) : [];
   const [isExpense, setIsExpense] = useState(true);
   const [budget, setBudget] = useState('');
   const [isFixed, setIsFixed] = useState(false);
@@ -410,7 +416,7 @@ const Categories = () => {
               <div className="form-group">
                 <label>Icona (Lucide ID)</label>
                 <div className="input-wrapper">
-                  <Palette size={18} className="input-icon" />
+                  <CategoryIcon name={icon} size={18} className="input-icon" />
                   <input
                     type="text"
                     placeholder="es. briefcase, shopping-cart..."
@@ -418,6 +424,16 @@ const Categories = () => {
                     onChange={(e) => setIcon(e.target.value)}
                   />
                 </div>
+                {iconMatches.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                    {iconMatches.map(n => (
+                      <button key={n} type="button" title={n} aria-label={n} onClick={() => setIcon(n)}
+                        style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--bg-glass)', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex' }}>
+                        <CategoryIcon name={n} size={20} />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
