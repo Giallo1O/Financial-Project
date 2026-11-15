@@ -23,6 +23,7 @@ import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
+import it.glknet.financial_manager.dto.SpaceImportItem;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.TransactionType;
 
@@ -61,10 +62,11 @@ public class CsvImportService {
 	}
 
 	/**
-	 * Righe da importare (con la loro provenienza, stesso ordine) e spostamenti tra i propri conti/Spaces, che non
-	 * diventano movimenti.
+	 * Righe da importare (con la loro provenienza, stesso ordine), spostamenti interni tra conti/Spaces,
+	 * e movimenti appartenenti agli Spaces N26.
 	 */
-	public record Parsed(List<TransactionRequest> rows, List<Source> sources, List<Internal> internal) {
+	public record Parsed(List<TransactionRequest> rows, List<Source> sources, List<Internal> internal,
+			List<SpaceImportItem> spaceItems) {
 		public int internalTransfers() {
 			return internal.size();
 		}
@@ -84,7 +86,7 @@ public class CsvImportService {
 				all = reader.readAll();
 			}
 			if (all.isEmpty()) {
-				return new Parsed(List.of(), List.of(), List.of());
+				return new Parsed(List.of(), List.of(), List.of(), List.of());
 			}
 			Columns cols = Columns.of(all.get(0));
 			List<String[]> rows = all.subList(1, all.size());
@@ -92,7 +94,7 @@ public class CsvImportService {
 				return byHeader(rows, cols);
 			}
 			List<TransactionRequest> guessed = byGuess(rows);
-			return new Parsed(guessed, guessed.stream().map(r -> new Source("", "", "")).toList(), List.of());
+			return new Parsed(guessed, guessed.stream().map(r -> new Source("", "", "")).toList(), List.of(), List.of());
 		} catch (Exception e) {
 			log.error("Failed to parse CSV file", e);
 			throw new RuntimeException("Failed to parse CSV: " + e.getMessage());
@@ -125,6 +127,11 @@ public class CsvImportService {
 		}
 	}
 
+	private static boolean isMainAccount(String acc) {
+		String lower = acc == null ? "" : acc.trim().toLowerCase(Locale.ROOT);
+		return "conto corrente principale".equals(lower) || "main account".equals(lower);
+	}
+
 	private Parsed byHeader(List<String[]> rows, Columns c) {
 		// N26 esporta conto principale e Spaces insieme: uno spostamento tra due di questi compare due volte (uscita da
 		// uno, entrata nell'altro) con come controparte il nome dell'altro conto. Non e' ne' spesa ne' entrata.
@@ -140,6 +147,7 @@ public class CsvImportService {
 		List<TransactionRequest> out = new ArrayList<>();
 		List<Source> sources = new ArrayList<>();
 		List<Internal> internal = new ArrayList<>();
+		List<SpaceImportItem> spaceItems = new ArrayList<>();
 		for (String[] row : rows) {
 			LocalDate date = tryParseDate(cell(row, c.date()));
 			BigDecimal amount = c.amount() >= 0 ? parseAmount(cell(row, c.amount())) : null;
@@ -149,25 +157,33 @@ public class CsvImportService {
 				amount = (in == null ? BigDecimal.ZERO : in.abs())
 						.subtract(outAmount == null ? BigDecimal.ZERO : outAmount.abs());
 			}
-			if (!ownAccounts.isEmpty() && ownAccounts.contains(cell(row, c.desc()).toLowerCase(Locale.ROOT))) {
-				if (date != null && amount != null && amount.signum() != 0) {
-					internal.add(new Internal(date, amount, cell(row, c.account()), cell(row, c.desc())));
-				}
-				continue;
-			}
 			if (date == null || amount == null || amount.signum() == 0) {
 				continue; // righe di saldo, totali o vuote
 			}
-			String desc = cell(row, c.desc());
-			if (desc.isEmpty()) {
-				desc = cell(row, c.ref());
+
+			String acc = c.account() >= 0 ? cell(row, c.account()) : "";
+			String partner = cell(row, c.desc());
+			String ref = cell(row, c.ref());
+
+			// Se la riga appartiene a uno Space N26 (e non al conto principale):
+			if (!acc.isEmpty() && !isMainAccount(acc)) {
+				spaceItems.add(new SpaceImportItem(acc, date, amount, partner, ref));
+				continue;
 			}
+
+			// Se la riga appartiene al conto principale ed è un giroconto con uno Space:
+			if (!ownAccounts.isEmpty() && ownAccounts.contains(partner.toLowerCase(Locale.ROOT))) {
+				internal.add(new Internal(date, amount, acc, partner));
+				continue;
+			}
+
+			String desc = partner.isEmpty() ? ref : partner;
 			desc = desc.replaceAll("\\s+", " "); // "BENNET        12" -> "BENNET 12"
 			out.add(new TransactionRequest(desc.isEmpty() ? "Movimento importato" : desc, amount.abs(),
 					amount.signum() > 0 ? TransactionType.ENTRATA : TransactionType.USCITA, null, null, date));
-			sources.add(new Source(cell(row, c.account()), cell(row, c.desc()), normalizeIban(cell(row, c.iban()))));
+			sources.add(new Source(acc, partner, normalizeIban(cell(row, c.iban()))));
 		}
-		return new Parsed(out, sources, internal);
+		return new Parsed(out, sources, internal, spaceItems);
 	}
 
 	/** IBAN senza spazi e in maiuscolo, per confrontarli. */

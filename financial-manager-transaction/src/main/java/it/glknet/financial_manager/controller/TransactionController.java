@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import it.glknet.financial_manager.config.AuthInterceptor;
 import it.glknet.financial_manager.dto.ImportResult;
 import it.glknet.financial_manager.dto.ImportRow;
+import it.glknet.financial_manager.dto.SpaceImportItem;
 import it.glknet.financial_manager.dto.TransactionRequest;
 import it.glknet.financial_manager.model.Transaction;
 import it.glknet.financial_manager.service.CategoryRuleService;
@@ -78,11 +79,11 @@ public class TransactionController {
 	}
 
 	/**
-	 * Anteprima dell'import: movimenti da importare, versamenti/prelievi dei salvadanai collegati e numero di
-	 * spostamenti tra i propri conti/Spaces che non diventano movimenti.
+	 * Anteprima dell'import: movimenti da importare, versamenti/prelievi dei salvadanai collegati,
+	 * numero di spostamenti tra i propri conti/Spaces che non diventano movimenti e movimenti degli Spaces N26.
 	 */
 	public record ImportPreview(List<ImportRow> rows, List<SavingsImportService.SavingsMove> savings,
-			int internalTransfers) {
+			int internalTransfers, List<SpaceImportItem> spaceItems) {
 	}
 
 	@PostMapping("/parse-csv")
@@ -114,7 +115,7 @@ public class TransactionController {
 					s != null ? "Regola: " + s.keyword() : null));
 		}
 		savings.sort(java.util.Comparator.comparing(SavingsImportService.SavingsMove::date));
-		return ResponseEntity.ok(new ImportPreview(preview, savings, parsed.internalTransfers()));
+		return ResponseEntity.ok(new ImportPreview(preview, savings, parsed.internalTransfers(), parsed.spaceItems()));
 	}
 
 	@PostMapping("/bulk-import")

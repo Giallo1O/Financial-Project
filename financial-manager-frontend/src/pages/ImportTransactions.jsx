@@ -11,7 +11,7 @@ import {
   PieChart,
   List
 } from 'lucide-react';
-import { fetchCategories, parseCsv, bulkImportTransactions, applySavingsMovements } from '../api';
+import { fetchCategories, parseCsv, bulkImportTransactions, applySavingsMovements, importSpaces } from '../api';
 import { eur } from '../utils/format';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -36,6 +36,7 @@ const ImportTransactions = () => {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [learn, setLearn] = useState(true); // ricorda le categorie scelte per i prossimi import
   const [savings, setSavings] = useState([]); // versamenti/prelievi dei salvadanai collegati
+  const [spaceItems, setSpaceItems] = useState([]); // movimenti appartenenti agli Spazi N26
   
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -85,6 +86,7 @@ const ImportTransactions = () => {
     try {
       const data = await parseCsv(file);
       setSavings((data.savings || []).map(m => ({ ...m, tempId: crypto.randomUUID() })));
+      setSpaceItems(data.spaceItems || []);
       setTransactions(data.rows.map(t => ({
         ...t, 
         tempId: crypto.randomUUID(),
@@ -93,9 +95,17 @@ const ImportTransactions = () => {
         transactionDate: t.transactionDate ? parseISO(t.transactionDate) : new Date()
       })));
       setCurrentStep(2);
-      setMessage(data.internalTransfers > 0
-        ? { text: `${data.internalTransfers} spostamenti tra i tuoi conti/Spaces non vengono importati: non sono né spese né entrate.`, type: 'success' }
-        : { text: '', type: '' });
+      
+      const spaceCount = data.spaceItems ? data.spaceItems.length : 0;
+      let msgText = '';
+      if (data.internalTransfers > 0) {
+        msgText += `${data.internalTransfers} spostamenti interni tra i tuoi conti/Spaces saltati. `;
+      }
+      if (spaceCount > 0) {
+        const distinct = [...new Set(data.spaceItems.map(s => s.spaceName))].join(', ');
+        msgText += `Trovati ${spaceCount} movimenti per gli Spazi (${distinct}) che verranno importati nella sezione Spazi.`;
+      }
+      setMessage(msgText ? { text: msgText, type: 'success' } : { text: '', type: '' });
     } catch (error) {
       console.error('Upload Error:', error);
       setMessage({ text: 'Non riesco a leggere il CSV. Controlla il formato del file.', type: 'error' });
@@ -121,7 +131,7 @@ const ImportTransactions = () => {
   };
 
   const handleNextToConfirm = () => {
-    if (transactions.length === 0 && savings.length === 0) {
+    if (transactions.length === 0 && savings.length === 0 && spaceItems.length === 0) {
       setMessage({ text: 'Non c\'è niente da importare.', type: 'error' });
       return;
     }
@@ -150,13 +160,25 @@ const ImportTransactions = () => {
       }
       // eslint-disable-next-line no-unused-vars
       const saved = savings.length > 0 ? await applySavingsMovements(savings.map(({ tempId, ...m }) => m)) : null;
+      let importedSpacesCount = 0;
+      if (spaceItems && spaceItems.length > 0) {
+        importedSpacesCount = await importSpaces(spaceItems);
+      }
+
+      let successMsg = `Importate ${imported} transazioni` + (skipped ? `, ${skipped} già presenti` : '');
+      if (importedSpacesCount > 0) {
+        successMsg += `. Spazi N26: ${importedSpacesCount} movimenti registrati`;
+      }
+      if (saved) {
+        successMsg += `. Salvadanai: ${saved.applied} versamenti/prelievi registrati` + (saved.skipped ? `, ${saved.skipped} già presenti` : '');
+      }
+      successMsg += '.';
+
       setMessage({
-        text: `Importate ${imported} transazioni` + (skipped ? `, ${skipped} saltate perché già presenti` : '')
-          + (saved ? `. Salvadanai: ${saved.applied} versamenti/prelievi registrati`
-            + (saved.skipped ? `, ${saved.skipped} già presenti` : '') : '') + '.',
+        text: successMsg,
         type: 'success'
       });
-      setTimeout(() => navigate(saved && imported === 0 ? '/goals' : '/transactions'), 3000);
+      setTimeout(() => navigate(importedSpacesCount > 0 && imported === 0 ? '/spaces' : '/transactions'), 3000);
     } catch (error) {
       setMessage({ text: 'Network error during import.', type: 'error' });
       console.error(error);

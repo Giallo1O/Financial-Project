@@ -94,10 +94,10 @@ class CsvImportServiceTest {
 		CsvImportService.Parsed parsed = new CsvImportService()
 				.parse(new MockMultipartFile("file", "x.csv", "text/csv", csv.getBytes()));
 
-		assertEquals(3, parsed.internalTransfers()); // i due lati del giroconto e il trasferimento verso lo Space
-		assertEquals("Vacanze", parsed.internal().get(1).account()); // lato dello Space, +200
-		assertEquals(0, new BigDecimal("200").compareTo(parsed.internal().get(1).amount()));
-		assertEquals("Abbonamenti", parsed.sources().get(0).account()); // SPOTIFY pagato dallo Space
-		assertEquals(List.of("SPOTIFY", "BENNET 12"), parsed.rows().stream().map(TransactionRequest::description).toList());
+		assertEquals(1, parsed.internalTransfers()); // giroconto sul conto principale verso Vacanze
+		assertEquals(3, parsed.spaceItems().size()); // Vacanze (+200), Abbonamenti (-20.99 giroconto), Abbonamenti (SPOTIFY -20.99)
+		assertEquals("Vacanze", parsed.spaceItems().get(0).spaceName());
+		assertEquals(0, new BigDecimal("200").compareTo(parsed.spaceItems().get(0).amount()));
+		assertEquals(List.of("BENNET 12"), parsed.rows().stream().map(TransactionRequest::description).toList());
 	}
 }

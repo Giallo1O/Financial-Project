@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard } from 'lucide-react';
 import AccountSummary from '../components/AccountSummary';
+import DualAccountSummary from '../components/DualAccountSummary';
 import CategoryPieChart from '../components/CategoryPieChart';
-import { fetchTransactions, fetchCategories } from '../api';
+import { fetchTransactions, fetchCategories, fetchSpacesDashboardSummary } from '../api';
 
 const Dashboard = () => {
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [dualSummary, setDualSummary] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,9 +18,10 @@ const Dashboard = () => {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
-        const [txs, cats] = await Promise.all([
+        const [txs, cats, dSummary] = await Promise.all([
           fetchTransactions(),
           fetchCategories(),
+          fetchSpacesDashboardSummary(currentMonth + 1, currentYear).catch(() => null)
         ]);
 
         const currentMonthTxs = txs.filter((tx) => {
@@ -27,6 +30,7 @@ const Dashboard = () => {
         });
 
         setCategories(cats);
+        setDualSummary(dSummary);
         // Sort descending
         setTransactions(currentMonthTxs.sort((a, b) => new Date(b.date) - new Date(a.date)));
       } catch (err) {
@@ -108,7 +112,11 @@ const Dashboard = () => {
         >
           {/* Top — cash flow summary (Full Width) */}
           <section>
-            <AccountSummary transactions={transactions} />
+            {dualSummary ? (
+              <DualAccountSummary summary={dualSummary} />
+            ) : (
+              <AccountSummary transactions={transactions} />
+            )}
           </section>
 
           {/* Bottom — charts (Two Columns) */}

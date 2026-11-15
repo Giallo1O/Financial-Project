@@ -613,3 +613,35 @@ export async function chooseHomeAssistantList(entityId) {
   });
   return res.json();
 }
+
+// ─── Spaces N26 ─────────────────────────────────────────────────────────────
+
+const SPACES = `${TRANSACTION_API}/api/spaces`;
+
+export async function fetchSpaces() {
+  const res = await authenticatedFetch(SPACES);
+  return res.json();
+}
+
+export async function fetchSpaceDetail(id) {
+  const res = await authenticatedFetch(`${SPACES}/${id}`);
+  return res.json();
+}
+
+export async function fetchSpacesDashboardSummary(month, year) {
+  const params = new URLSearchParams();
+  if (month) params.append('month', month);
+  if (year) params.append('year', year);
+  const url = `${SPACES}/dashboard-summary?${params.toString()}`;
+  const res = await authenticatedFetch(url);
+  return res.json();
+}
+
+export async function importSpaces(items) {
+  const res = await authenticatedFetch(`${SPACES}/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+  });
+  return res.json();
+}

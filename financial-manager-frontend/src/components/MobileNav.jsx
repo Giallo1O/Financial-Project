@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowLeftRight, Camera, PiggyBank, Menu, X, BarChart3, CalendarClock,
-  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, User
+  Target, TrendingUp, Tag, Upload, Eye, EyeOff, LogOut, ListChecks, User, Layers
 } from 'lucide-react';
 import { removeAuth } from '../auth';
 import { usePrivacy } from '../context/PrivacyContext';
@@ -20,6 +20,7 @@ const MORE = [
   { to: '/analytics', label: 'Analisi', icon: BarChart3 },
   { to: '/recurring', label: 'Ricorrenti', icon: CalendarClock },
   { to: '/goals', label: 'Salvadanaio', icon: Target },
+  { to: '/spaces', label: 'Spazi N26', icon: Layers },
   { to: '/comparisons', label: 'Confronti', icon: TrendingUp },
   { to: '/categories', label: 'Categorie', icon: Tag },
   { to: '/import', label: 'Importa CSV', icon: Upload },

@@ -8,6 +8,7 @@ import Categories from './pages/Categories';
 import Comparisons from './pages/Comparisons';
 import ImportTransactions from './pages/ImportTransactions';
 import SavingsGoals from './pages/SavingsGoals';
+import Spaces from './pages/Spaces';
 import RecurringTransactions from './pages/RecurringTransactions';
 import Groceries from './pages/Groceries';
 import Shopping from './pages/Shopping';
@@ -32,6 +33,7 @@ function App() {
           <Route path="/budgets" element={<Budgets />} />
           <Route path="/recurring" element={<RecurringTransactions />} />
           <Route path="/goals" element={<SavingsGoals />} />
+          <Route path="/spaces" element={<Spaces />} />
           <Route path="/groceries" element={<Groceries />} />
           <Route path="/shopping" element={<Shopping />} />
           <Route path="/comparisons" element={<Comparisons />} />
